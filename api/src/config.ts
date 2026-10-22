@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import { APP_LINK_SCHEME } from './contract/pairing.js';
 
 export const HOME = os.homedir();
 
@@ -178,6 +179,14 @@ export function commandName(env: NodeJS.ProcessEnv): string {
   return name && /^[a-z0-9-]+$/.test(name) ? name : DEFAULT_COMMAND_NAME;
 }
 export const COMMAND_NAME = commandName(process.env);
+// The scheme of the app link `hestia pair` prints (HESTIA_APP_LINK_SCHEME
+// in .env): which app a phone opens it in. `hestia`, the production app's,
+// unless set; a dev backend sets `hestia-dev` for Hestia Dev
+// (contract/pairing.ts). Anything that isn't a plain scheme is ignored.
+export function appLinkScheme(env: NodeJS.ProcessEnv): string {
+  const scheme = env.HESTIA_APP_LINK_SCHEME?.trim();
+  return scheme && /^[a-z][a-z0-9-]*$/.test(scheme) ? scheme : APP_LINK_SCHEME;
+}
 export const WORKTREES_DIR = HOST_PATHS.worktreesDir;
 export const WORKTREES_FALLBACK_DIR = HOST_PATHS.worktreesFallbackDir;
 

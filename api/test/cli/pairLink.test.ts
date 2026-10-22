@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { appLinkScheme } from '../../src/config.js';
 import { frontendOrigin, isTailnetUrl, pairBackendUrl, pairingLink, pairingLinks, pairLinkKinds, phoneReachHint } from '../../src/cli/pairLink.js';
 import { DEFAULT_CORS_ALLOWED_ORIGINS, DEFAULT_FRONTEND_ORIGIN } from '../../src/config.js';
 
@@ -56,6 +57,21 @@ describe('pairingLinks', () => {
     expect(links.map((l) => l.kind)).toEqual(['web', 'app']);
     expect(links[0]!.link).toBe('https://app.example/login?mode=add&url=https%3A%2F%2Fbox.tail1.ts.net#pair=c0de');
     expect(links[1]!.link).toBe('hestia://pair?url=https%3A%2F%2Fbox.tail1.ts.net#code=c0de');
+  });
+
+  it('gives the app link the scheme asked for (a dev backend: Hestia Dev’s)', () => {
+    const [link] = pairingLinks(['app'], 'https://app.example', 'https://box.tail1.ts.net', 'c0de', 'hestia-dev');
+    expect(link!.link).toBe('hestia-dev://pair?url=https%3A%2F%2Fbox.tail1.ts.net#code=c0de');
+  });
+});
+
+describe('appLinkScheme', () => {
+  it('is hestia unless .env names another plain scheme', () => {
+    expect(appLinkScheme({})).toBe('hestia');
+    expect(appLinkScheme({ HESTIA_APP_LINK_SCHEME: ' hestia-dev ' })).toBe('hestia-dev');
+    expect(appLinkScheme({ HESTIA_APP_LINK_SCHEME: 'Hestia' })).toBe('hestia');
+    expect(appLinkScheme({ HESTIA_APP_LINK_SCHEME: 'javascript:' })).toBe('hestia');
+    expect(appLinkScheme({ HESTIA_APP_LINK_SCHEME: '1x' })).toBe('hestia');
   });
 });
 

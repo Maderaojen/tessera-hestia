@@ -33,9 +33,9 @@ export function pairLinkKinds(value: string | undefined): PairingLinkKind[] | nu
   return null;
 }
 
-/** Each requested link, in order. */
-export function pairingLinks(kinds: PairingLinkKind[], frontend: string, backendUrl: string, code: string): { kind: PairingLinkKind; link: string }[] {
-  return kinds.map((kind) => ({ kind, link: kind === 'app' ? appPairingLink(backendUrl, code) : webPairingLink(frontend, backendUrl, code) }));
+/** Each requested link, in order; the app one with `appScheme`. */
+export function pairingLinks(kinds: PairingLinkKind[], frontend: string, backendUrl: string, code: string, appScheme?: string): { kind: PairingLinkKind; link: string }[] {
+  return kinds.map((kind) => ({ kind, link: kind === 'app' ? appPairingLink(backendUrl, code, appScheme) : webPairingLink(frontend, backendUrl, code) }));
 }
 
 function isLoopbackHostname(hostname: string): boolean {

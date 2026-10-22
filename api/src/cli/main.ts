@@ -34,7 +34,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { renderUnicodeCompact } from 'uqr';
-import { DEFAULT_FRONTEND_ORIGIN, HOST, LOCAL_TOOL_TOKEN_PATH, localApiOrigin, PORT } from '../config.js';
+import { appLinkScheme, DEFAULT_FRONTEND_ORIGIN, HOST, LOCAL_TOOL_TOKEN_PATH, localApiOrigin, PORT } from '../config.js';
 import { attachCommand } from './attach.js';
 import { CONVERSATION_USAGE, conversationCommand } from './conversation.js';
 import { defaultTmuxName, DELEGATE_USAGE, delegateCommand, fileReader } from './delegate.js';
@@ -151,7 +151,7 @@ async function pair(args: string[]): Promise<void> {
     ?? fail(t('cli.pair.badUrl', { source: urlSource, url }));
   const token = await localToolToken();
   const { code, expiresInMs } = await api<{ code: string; expiresInMs: number }>(token, '/auth/pairing-code', { method: 'POST' });
-  const links = pairingLinks(kinds, frontendOrigin(process.env.CORS_ALLOWED_ORIGINS, DEFAULT_FRONTEND_ORIGIN), backendUrl, code);
+  const links = pairingLinks(kinds, frontendOrigin(process.env.CORS_ALLOWED_ORIGINS, DEFAULT_FRONTEND_ORIGIN), backendUrl, code, appLinkScheme(process.env));
   const link = links[0]!.link;
   // White modules on black, set explicitly: the compact renderer draws the
   // light parts, so on a light-themed terminal it would come out inverted,

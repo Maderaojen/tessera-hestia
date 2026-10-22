@@ -36,7 +36,9 @@ The one-line install (`curl -fsSL …/install.sh | sh`) trusts **the
 `install.sh` downloaded over HTTPS from GitHub**, with the key written in it.
 If the GitHub account or repository is compromised, an attacker can change
 the installer and the key together, or have the installer skip every check;
-the bundle signatures can't stop that.
+the bundle signatures can't stop that. The release private key is also kept
+in GitHub Actions secrets (see "Maintainers"), so a compromised maintainer
+GitHub account could also publish a correctly signed release.
 
 What the signatures do stop:
 
@@ -91,5 +93,13 @@ that comes with a bundle or a Release.
   mismatch stops it.
 - The release script puts the key's fingerprint and the one-line install in
   the Release notes.
+- Releases are normally published by GitHub Actions: the private key is also
+  an Actions secret of the (private) source repository, written to a
+  temporary file for the signing step only and removed after it; the public
+  key used is taken from `install.sh` at the commit being published. So
+  besides this repository, the maintainer's GitHub account is part of what
+  you trust (two-factor authentication, tokens scoped to a single
+  repository). The maintainer keeps a copy too, to publish from their own
+  machine when Actions can't.
 - A dry run without keys is for review only: its artifacts are unsigned, and
   the installer won't accept them.

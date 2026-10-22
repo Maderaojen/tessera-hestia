@@ -18,6 +18,12 @@ describe('pairing links', () => {
     expect(parsePairingLink('hestia:pair?url=https%3A%2F%2Fb.example#code=x')).toEqual({ kind: 'app', backendUrl: 'https://b.example', code: 'x' });
   });
 
+  it('reads Hestia Dev’s app link too', () => {
+    const link = appPairingLink(BACKEND, 'Ab-_9', 'hestia-dev');
+    expect(link).toBe('hestia-dev://pair?url=https%3A%2F%2Fbox.tail1.ts.net%3A8443#code=Ab-_9');
+    expect(parsePairingLink(link)).toEqual({ kind: 'app', backendUrl: BACKEND, code: 'Ab-_9' });
+  });
+
   it('a code with characters that need escaping survives the round trip', () => {
     expect(parsePairingLink(appPairingLink(BACKEND, 'a b/c#d'))?.code).toBe('a b/c#d');
     expect(parsePairingLink(webPairingLink('https://app.example', BACKEND, 'a b/c#d'))?.code).toBe('a b/c#d');
@@ -30,6 +36,7 @@ describe('pairing links', () => {
       'hestia://pair#code=x', // no backend
       'hestia://open?url=https%3A%2F%2Fb.example#code=x', // another action
       'other://pair?url=https%3A%2F%2Fb.example#code=x', // another scheme
+      'hestia-other://pair?url=https%3A%2F%2Fb.example#code=x', // no app's scheme
       'https://app.example/login?url=https%3A%2F%2Fb.example#pair=x', // no mode=add
       'https://app.example/settings?mode=add&url=https%3A%2F%2Fb.example#pair=x', // not the login page
       'https://app.example/login?mode=add&url=https%3A%2F%2Fb.example#code=x', // the app's fragment on the web link

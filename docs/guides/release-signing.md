@@ -30,7 +30,8 @@
 一行安裝（`curl -fsSL …/install.sh | sh`）的信任根是**經 HTTPS 從 GitHub
 下載的 `install.sh`**，連同寫在裡面的公鑰。GitHub 帳號或 repo 被入侵時，
 攻擊者可以同時改掉安裝器與公鑰，或讓安裝器跳過所有驗證；版本包的簽章擋不住
-這種情況。
+這種情況。發布用的私鑰也存在 GitHub Actions 的 secrets 裡（見「維護者」），
+所以維護者的 GitHub 帳號被入侵時，攻擊者也可能發出簽章正確的版本。
 
 簽章擋得住的是：
 
@@ -73,4 +74,9 @@
   commit 裡 `install.sh` 內建的公鑰就是這一把（不然發出去的安裝器驗不過自己的
   Release）；任何一項不符就停止。
 - 發布腳本把公鑰指紋與一行安裝寫進 Release 說明。
+- 發布通常在 GitHub Actions 進行：私鑰同時存在原始碼 repo（私有）的 Actions
+  secrets，只在簽章那一步寫成暫存檔、做完刪除；簽章用的公鑰直接從要發布的
+  commit 的 `install.sh` 取出。所以除了這個 repo，維護者的 GitHub 帳號也是信任
+  的一部分（兩步驟驗證、只給單一 repo 的 token）。維護者自己的電腦上也留一份，
+  在 Actions 不能用時從本機發布。
 - 沒有設定金鑰的 dry run 只供檢視，產物沒有簽章，安裝器不會接受。
