@@ -1,0 +1,7 @@
+{
+  "launch.janus.failed": "Looking up Janus profiles failed; the native CLIs still work.",
+  "launch.janus.notFound": "Janus wasn't found; the native CLIs still work.",
+  "launch.native.claude": "Claude (native)",
+  "launch.native.codex": "Codex (native)",
+  "launch.native.gemini": "Gemini CLI (compatible)"
+}

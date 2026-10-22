@@ -1,0 +1,50 @@
+› Write the numbers from 1 to 400 separated by spaces, nothing else.
+■ Conversation interrupted - use /feedback if something went wrong
+
+
+› V001 V002 V003 V004 V005 V006 V007 V008 V009 V010 V011 V012 V013 V014 V015 V016 V017 V018 V019 V020 V021 V022 V023 V024 V025 V026 V027 V028 V029 V030 V031
+  V032 V033 V034 V035 V036 V037 V038 V039 V040 V041 V042 V043 V044 V045 V046 V047 V048 V049 V050 V051 V052 V053 V054 V055 V056 V057 V058 V059 V060 END. Reply
+  with exactly: OK5
+
+
+• OK5
+
+  Worked for 3s • 11:08 AM
+
+
+› U001 U002 U003 U004 U005 U006 U007 U008 U009 U010 U011 U012 U013 U014 U015 U016 U017 U018 U019 U020 U021 U022 U023 U024 U025 U026 U027 U028 U029 U030 U031
+  U032 U033 U034 U035 U036 U037 U038 U039 U040 U041 U042 U043 U044 U045 U046 U047 U048 U049 U050 U051 U052 U053 U054 U055 U056 U057 U058 U059 U060 END. Reply
+  with exactly: OK6
+
+
+• OK6
+
+  Worked for 1s • 11:08 AM
+
+
+› D001 D002 D003 D004 D005 D006 D007 D008 D009 D010 D011 D012 D013 D014 D015 D016 D017 D018 D019 D020 D021 D022 D023 D024 D025 D026 D027 D028 D029 D030 D031
+  D032 D033 D034 D035 D036 D037 D038 D039 D040 D041 D042 D043 D044 D045 D046 D047 D048 D049 D050 D051 D052 D053 D054 D055 D056 D057 D058 D059 D060 END 0.3.
+  Reply with exactly: OK
+
+
+• OK
+
+  Worked for 1s • 11:09 AM
+
+
+› D001 D002 D003 D004 D005 D006 D007 D008 D009 D010 D011 D012 D013 D014 D015 D016 D017 D018 D019 D020 D021 D022 D023 D024 D025 D026 D027 D028 D029 D030 D031
+  D032 D033 D034 D035 D036 D037 D038 D039 D040 D041 D042 D043 D044 D045 D046 D047 D048 D049 D050 D051 D052 D053 D054 D055 D056 D057 D058 D059 D060 END 0.6.
+  Reply with exactly: OK
+
+
+• OK
+
+  Worked for 2s • 11:09 AM
+
+⚠ Heads up, you have less than 5% of your 5h limit left. Run /status for a breakdown.
+                                                                                                         ⚠ 5h limit: only 5% left · resets at 2:26 PM · /status
+
+  🔒  This conversation is open in another app                                                                                                      r to retry
+      Close it there and press R to continue here.
+
+   r retry   f fork   esc/ctrl+c/q exit   ctrl+t transcript

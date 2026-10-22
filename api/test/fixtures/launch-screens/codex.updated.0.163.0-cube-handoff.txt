@@ -1,0 +1,40 @@
+dev@host:/srv/dev/projects/game/cube$ /home/dev/.config/madera/janus/bin/janus run codex-mad --no-daemon
+Token usage: total=1,101,442 input=928,623 (+ 43,145,984 cached) output=172,819 (reasoning 69,104)
+To continue this session, run:
+  codex resume 01a14280-4741-7c20-af8e-e1c4ab6458ec
+Or run codex resume and select 檢查網站是否支援 PWA.
+dev@host:/srv/dev/projects/game/cube$ env CODEX_HOME=/home/dev/.codex codex --dangerously-bypass-approvals-and-sandbox --n
+o-daemon
+
+Updating Codex via `npm install -g @openai/codex`...
+
+changed 2 packages in 4s
+
+🎉 Update ran successfully! Please restart Codex.
+dev@host:/srv/dev/projects/game/cube$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

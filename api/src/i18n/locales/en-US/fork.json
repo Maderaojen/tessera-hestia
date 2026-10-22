@@ -1,0 +1,12 @@
+{
+  "fork.attention.briefNotDelivered": "The branch line's brief didn't reach the CLI",
+  "fork.attention.cliExited": "The branch line's CLI exited before it took over",
+  "fork.attention.startupPrompt": "The CLI is waiting for you at its start-up screen",
+  "fork.attention.workspaceTrust": "The CLI is asking whether to trust this folder; answer in the app",
+  "fork.prepare.briefFailed": "Couldn't write the brief: {error}",
+  "fork.prepare.parentGone": "The main line's session no longer exists",
+  "fork.push.launchFailed": "Didn't start: {detail}",
+  "fork.push.sessionDeletedWorktreeKept": "The session was deleted, but its worktree is still at {worktree}; remove it from this conversation's branch lines or from Worktrees in the Git panel",
+  "fork.push.title": "Branch line: {title}",
+  "fork.title.branchOf": "{title} (branch line)"
+}

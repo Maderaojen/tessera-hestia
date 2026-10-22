@@ -1,0 +1,6 @@
+{"timestamp":"2026-10-13T05:00:00.000Z","type":"session_meta","payload":{"id":"01a12360-1111-7111-8111-111111111111","cwd":"/work","originator":"codex-tui","cli_version":"0.162.1","source":"cli"}}
+{"ordinal":1,"timestamp":"2026-10-13T05:00:01.000Z","type":"turn_context","payload":{"turn_id":"t1","cwd":"/work","approval_policy":"on-request","approvals_reviewer":"auto_review","sandbox_policy":{"type":"workspace-write","network_access":false,"exclude_tmpdir_env_var":false,"exclude_slash_tmp":false},"permission_profile":{"type":"managed"},"model":"gpt-x","effort":"medium","summary":"auto"}}
+{"ordinal":2,"timestamp":"2026-10-13T05:00:02.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}
+{"ordinal":3,"timestamp":"2026-10-13T05:00:05.000Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"t1","last_agent_message":"ok"}}
+{"ordinal":4,"timestamp":"2026-10-13T05:01:01.000Z","type":"turn_context","payload":{"turn_id":"t2","cwd":"/work","approval_policy":"never","approvals_reviewer":"user","sandbox_policy":{"type":"danger-full-access"},"permission_profile":{"type":"disabled"},"model":"gpt-x","effort":"medium","summary":"auto"}}
+{"ordinal":5,"timestamp":"2026-10-13T05:01:02.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"t2"}}

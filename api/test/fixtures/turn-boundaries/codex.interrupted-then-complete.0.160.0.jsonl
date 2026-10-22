@@ -1,0 +1,18 @@
+{"timestamp": "2026-10-05T02:31:14.496Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "01a109e6-ab3a-7c31-8ea7-549c17566b5d"}}
+{"timestamp": "2026-10-05T02:31:15.000Z", "type": "response_item", "payload": {"type": "message", "role": "developer", "content": [{"type": "output_text", "text": "(assistant text)"}]}}
+{"timestamp": "2026-10-05T02:31:15.001Z", "type": "response_item", "payload": {"type": "message", "role": "developer", "content": [{"type": "output_text", "text": "(assistant text)"}]}}
+{"timestamp": "2026-10-05T02:31:15.001Z", "type": "response_item", "payload": {"type": "message", "role": "developer", "content": [{"type": "output_text", "text": "(assistant text)"}]}}
+{"timestamp": "2026-10-05T02:31:15.001Z", "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "(user message)"}]}}
+{"timestamp": "2026-10-05T02:31:15.031Z", "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "(user message)"}]}}
+{"timestamp": "2026-10-05T02:31:15.032Z", "type": "event_msg", "payload": {"type": "item_completed"}}
+{"timestamp": "2026-10-05T02:31:18.497Z", "type": "event_msg", "payload": {"type": "token_count"}}
+{"timestamp": "2026-10-05T02:31:18.499Z", "type": "response_item", "payload": {"type": "message", "role": "developer", "content": [{"type": "output_text", "text": "(assistant text)"}]}}
+{"timestamp": "2026-10-05T02:31:18.500Z", "type": "event_msg", "payload": {"type": "turn_aborted", "turn_id": "01a109e6-ab3a-7c31-8ea7-549c17566b5d", "reason": "interrupted"}}
+{"timestamp": "2026-10-05T02:31:30.153Z", "type": "event_msg", "payload": {"type": "thread_settings_applied"}}
+{"timestamp": "2026-10-05T02:31:30.155Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "01a109e6-e867-7c13-b826-395c8918c8f3"}}
+{"timestamp": "2026-10-05T02:31:30.188Z", "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "(user message)"}]}}
+{"timestamp": "2026-10-05T02:31:30.189Z", "type": "event_msg", "payload": {"type": "item_completed"}}
+{"timestamp": "2026-10-05T02:31:34.837Z", "type": "event_msg", "payload": {"type": "item_completed"}}
+{"timestamp": "2026-10-05T02:31:34.838Z", "type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "final_answer", "content": [{"type": "output_text", "text": "(assistant text)"}]}}
+{"timestamp": "2026-10-05T02:31:34.878Z", "type": "event_msg", "payload": {"type": "token_count"}}
+{"timestamp": "2026-10-05T02:31:34.880Z", "type": "event_msg", "payload": {"type": "task_complete", "turn_id": "01a109e6-e867-7c13-b826-395c8918c8f3"}}

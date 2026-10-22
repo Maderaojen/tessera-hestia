@@ -1,0 +1,45 @@
+
+  >_ OpenAI Codex (v0.163.0)
+     /tmp/scratchpad/cx/work
+
+
+› hi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+◦ Reconnecting... 4/5 (13s • esc to interrupt)
+  └ Unexpected status 401 Unauthorized: Incorrect API key provided: sk-test-**********real. You can find your API key at https://platform.openai.com/account/
+    api-keys., url: https://api.openai.com/v1/responses, cf-ray: a4b6eafb1fbfdb55-TPE, request id: req_4cdc8c862c9d46f4aa53d0681add6103, auth error: 401, auth
+    error code: invalid_api_key
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol default · /tmp/scratchpad/cx/work · ⠸
+  ? for shortcuts                                                                                                                     ⚠ 2 warnings · f2 to view

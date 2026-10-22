@@ -1,0 +1,4 @@
+{
+  "launcher.env.gone": "hestia: 設定檔 {target} 不見了（{env} 連到它）。重新執行 {installer}。",
+  "launcher.env.missing": "hestia: 找不到設定 {env}。先執行 {installer}。"
+}

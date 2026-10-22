@@ -1,0 +1,4 @@
+{
+  "launcher.env.gone": "hestia: the settings file {target} is gone ({env} links to it). Run {installer} again.",
+  "launcher.env.missing": "hestia: no settings at {env}. Run {installer} first."
+}

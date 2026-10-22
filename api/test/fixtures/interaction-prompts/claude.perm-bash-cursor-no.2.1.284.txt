@@ -1,0 +1,40 @@
+● Write(a.txt)
+  ⎿  Wrote 1 line to a.txt
+      1 hi
+
+❯ 好
+
+● 👍
+
+✻ Crunched for 3s · done 下午1:40
+
+❯ 用 Bash 執行 ls -la /tmp/aqt/cap | head -3。不要說明。
+
+  Listed 1 directory (ctrl+o to expand)
+
+● 總用量 20
+  drwxrwxr-x 2 dev dev 4096  9月 29 13:40 .
+  drwxrwxr-x 3 dev dev 4096  9月 29 13:40 ..
+
+✻ Cooked for 4s · done 下午1:40
+
+❯ 用 Bash 執行 touch /tmp/aqt/b.txt && mv /tmp/aqt/b.txt /tmp/aqt/c.txt。不要說明。
+
+● Bash(touch /tmp/aqt/b.txt && mv /tmp/aqt/b.txt /tmp/aqt/c.txt)
+  ⎿  Waiting…
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Bash command
+ Tip: auto mode handles these prompts for you — choose "switch to auto mode" below
+
+   touch /tmp/aqt/b.txt && mv /tmp/aqt/b.txt /tmp/aqt/c.txt
+   Create b.txt and rename it to c.txt
+
+ Do you want to proceed?
+   1. Yes
+   2. Yes, and don't ask again for touch /tmp/aqt/b.txt and mv /tmp/aqt/b.txt /tmp/aqt/c.txt commands in /tmp/aqt
+   3. Yes, and switch to auto mode · auto mode handles these prompts for you
+ ❯ 4. No
+
+ Esc to cancel · Tab to amend
+

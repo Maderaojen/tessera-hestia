@@ -1,0 +1,10 @@
+{
+  "account.probe.commandNotFound": "Command not found: {command}",
+  "account.probe.loginRequired": "The CLI asks to log in",
+  "account.probe.trustUnanswered": "The CLI's folder trust prompt couldn't be answered automatically",
+  "account.probe.unsupported": "Reading usage isn't supported for this provider yet",
+  "account.window.fiveHour": "5 hours",
+  "account.window.minutes": "{minutes} minutes",
+  "account.window.sevenDay": "7 days",
+  "account.window.sevenDayOf": "7 days ({qualifier})"
+}

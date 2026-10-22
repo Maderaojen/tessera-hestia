@@ -1,0 +1,6 @@
+{
+  "format.text.bullet": "• {text}",
+  "format.text.labelValue": "{label}: {value}",
+  "format.text.parenSuffix": " ({text})",
+  "format.text.withTail": "{text}:\n{tail}"
+}

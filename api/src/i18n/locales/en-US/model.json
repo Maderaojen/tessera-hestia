@@ -1,0 +1,16 @@
+{
+  "model.option.claudeDefault": "Default (account's choice)",
+  "model.switch.agyRejected": "Agy doesn't accept the model \"{model}\"",
+  "model.switch.answered": "{cli} answered: {answer}",
+  "model.switch.claudeConfirmCancelled": "Claude Code asks to confirm: {question} (cancelled, not switched; switch in the terminal to go ahead)",
+  "model.switch.claudeConfirmStuck": "Claude Code asks to confirm \"{question}\", and that couldn't be cancelled",
+  "model.switch.claudeNotFound": "Claude Code can't find the model \"{model}\"; this account may not be able to use it",
+  "model.switch.codexDifferent": "Codex switched to {model}, not what was chosen",
+  "model.switch.codexEffortMissing": "Codex's menu has no effort \"{effort}\"",
+  "model.switch.codexModelMissing": "Codex's model menu has no \"{model}\"",
+  "model.switch.codexNoAdvancedMenu": "Codex didn't open its advanced effort menu",
+  "model.switch.codexNoEffortMenu": "Codex didn't open its effort menu",
+  "model.switch.codexNoModelMenu": "Codex didn't open its model menu",
+  "model.switch.codexNoResult": "Codex didn't show whether it switched",
+  "model.switch.noAnswer": "{cli} didn't say whether it switched"
+}

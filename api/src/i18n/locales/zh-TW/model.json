@@ -1,0 +1,16 @@
+{
+  "model.option.claudeDefault": "預設（帳號建議）",
+  "model.switch.agyRejected": "Agy 不接受 model「{model}」",
+  "model.switch.answered": "{cli} 回應：{answer}",
+  "model.switch.claudeConfirmCancelled": "Claude Code 要求確認：{question}（已取消，沒有切換；要切換請到終端機操作）",
+  "model.switch.claudeConfirmStuck": "Claude Code 要求確認「{question}」，但無法取消這個確認",
+  "model.switch.claudeNotFound": "Claude Code 找不到 model「{model}」，這個帳號可能不能使用",
+  "model.switch.codexDifferent": "Codex 切換成了 {model}，與選擇的不同",
+  "model.switch.codexEffortMissing": "Codex 的選單上沒有思考強度「{effort}」",
+  "model.switch.codexModelMissing": "Codex 的 model 選單上沒有「{model}」",
+  "model.switch.codexNoAdvancedMenu": "Codex 沒有開啟進階思考強度選單",
+  "model.switch.codexNoEffortMenu": "Codex 沒有開啟思考強度選單",
+  "model.switch.codexNoModelMenu": "Codex 沒有開啟 model 選單",
+  "model.switch.codexNoResult": "Codex 沒有顯示切換結果",
+  "model.switch.noAnswer": "{cli} 沒有回應切換結果"
+}

@@ -1,0 +1,17 @@
+{
+  "spawn.prepare.tmuxFailed": "無法建立 tmux：{error}",
+  "spawn.prepare.workspaceFailed": "無法建立工作目錄：{error}",
+  "spawn.session.forkConversationMissing": "找不到要分出來的那段對話",
+  "spawn.startup.neverStarted": "CLI 一直沒有啟動完成",
+  "spawn.startup.noInputBox": "CLI 一直沒有出現可以輸入的畫面",
+  "spawn.startup.notReady": "CLI 一直沒有準備好接收指示",
+  "spawn.startup.notStarted": "CLI 沒有啟動",
+  "spawn.startup.readBriefYourself": "請手動讓 CLI 讀 {file}",
+  "spawn.startup.relaunched": "CLI 更新完自己結束了，已用同一個設定重新啟動一次",
+  "spawn.startup.trustStill": "已經代為選了「信任」，但提示還在",
+  "spawn.startup.trustUnsure": "無法確認選項位置，請到終端機回答",
+  "spawn.startup.unknownScreen": "App 不認得這個畫面，還沒送出指示",
+  "spawn.startup.updatePromptUnsure": "CLI 在問要不要更新，無法確認選項位置，請到終端機選「Skip」",
+  "spawn.startup.updateSkippedStill": "CLI 在問要不要更新，已代為選「Skip」但畫面還在，請到終端機處理",
+  "spawn.startup.waitingElsewhere": "CLI 一直在等其他回應"
+}

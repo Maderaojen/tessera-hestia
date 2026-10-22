@@ -1,0 +1,28 @@
+{
+  "packages": [
+    {
+      "name": "@maderaojen/json-file-store",
+      "version": "0.1.0",
+      "filename": "maderaojen-json-file-store-0.1.0.tgz",
+      "sha256": "05f1a9307d50033665e31e577fb80edb36b610b62d78c23f56f23df17af2664d"
+    },
+    {
+      "name": "@maderaojen/git-parse",
+      "version": "0.1.0",
+      "filename": "maderaojen-git-parse-0.1.0.tgz",
+      "sha256": "01af77ad2a5ab9166dd8f8abd28185456c873e578d6694b838169c8dfd45a380"
+    },
+    {
+      "name": "@maderaojen/fs-guard",
+      "version": "0.1.0",
+      "filename": "maderaojen-fs-guard-0.1.0.tgz",
+      "sha256": "f6079816d079cb9095a49b877a6a60f3ee502aaf6554a8d49f41a60838649348"
+    },
+    {
+      "name": "@maderaojen/i18n-vue",
+      "version": "0.3.0",
+      "filename": "maderaojen-i18n-vue-0.3.0.tgz",
+      "sha256": "e54086b205650b41f87dfac86b342d3bab89bb54e60e3e23260be1039547929a"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "about": "The shape of cube's records after the 2026-10-16 handoff Codex's update menu ate (ADR 0030): continuity.json's session (history abridged to the handoff), and the conversation the handoff started as the registry has it. Ids kept, path shortened, no conversation content. The pane it left is launch-screens/codex.updated.0.163.0-cube-handoff.txt.",
+  "sessionId": "f680702a-f692-48a5-af83-db7de9d0db8c",
+  "continuitySession": {
+    "override": {},
+    "lastHit": { "conversationId": "ae2181de-bdf1-49ee-b89a-f4d8c5d26bef", "at": "2026-10-16T11:10:48.604Z" },
+    "pending": null,
+    "handoff": null,
+    "monitored": "ae2181de-bdf1-49ee-b89a-f4d8c5d26bef",
+    "noHandoffFor": null,
+    "resumedAt": [],
+    "history": [
+      { "at": "2026-10-16T11:12:40.704Z", "kind": "no_target", "detail": "You’ve hit your usage limit." },
+      { "at": "2026-10-16T11:12:40.704Z", "kind": "scheduled", "detail": "2026-10-16T12:41:00.000Z" },
+      { "at": "2026-10-16T11:17:47.532Z", "kind": "handoff_started", "detail": "limit_hit → Codex (原生)", "handoffId": "d6abb9d7-2c60-4dd7-bfc9-2b280e505746" },
+      { "at": "2026-10-16T11:17:47.532Z", "kind": "handoff_brief", "detail": "incoming", "handoffId": "d6abb9d7-2c60-4dd7-bfc9-2b280e505746" },
+      { "at": "2026-10-16T11:17:58.856Z", "kind": "handoff_switched", "detail": "Codex (原生)", "handoffId": "d6abb9d7-2c60-4dd7-bfc9-2b280e505746" },
+      { "at": "2026-10-16T11:18:09.009Z", "kind": "handoff_done", "detail": "Codex (原生)", "handoffId": "d6abb9d7-2c60-4dd7-bfc9-2b280e505746" }
+    ]
+  },
+  "session": { "status": "idle", "activeConversationId": null, "provider": null, "cwd": "/srv/dev/projects/game/cube" },
+  "handoffConversation": {
+    "conversationId": "8ea36415-bdef-40ed-87ac-9e433b43ef40",
+    "latest": true,
+    "turns": 0,
+    "endedAt": "2026-10-16T11:18:11.385Z",
+    "endReason": "cli_exit",
+    "profileId": "native:codex",
+    "permissionMode": "yolo",
+    "record": {
+      "handoffId": "d6abb9d7-2c60-4dd7-bfc9-2b280e505746",
+      "trigger": "limit_hit",
+      "fromConversationId": "ae2181de-bdf1-49ee-b89a-f4d8c5d26bef",
+      "briefSource": "incoming",
+      "source": "incoming",
+      "briefNote": null,
+      "confirm": "auto",
+      "briefAmended": null,
+      "briefFile": ".hestia/handoffs/20261016-111747Z-d6abb9d7.md"
+    },
+    "briefPath": "/srv/dev/projects/game/cube/.hestia/handoffs/20261016-111747Z-d6abb9d7.md"
+  }
+}

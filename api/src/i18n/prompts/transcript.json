@@ -1,0 +1,13 @@
+{
+  "transcript.export.cli": "- CLI：{cli}",
+  "transcript.export.cwd": "- 工作目錄：`{cwd}`",
+  "transcript.export.exportedAt": "- 匯出時間：{time}",
+  "transcript.export.heading": "# 完整對話紀錄",
+  "transcript.export.turns": "- 共 {count} 輪（舊到新）",
+  "transcript.export.unknown": "（不明）",
+  "transcript.turn.followUp": "（回覆途中使用者補充）",
+  "transcript.turn.noText": ">（沒有文字）",
+  "transcript.turn.reply": "### 第 {turn} 輪：回覆",
+  "transcript.turn.replyInterrupted": "### 第 {turn} 輪：回覆（被中斷）",
+  "transcript.turn.user": "### 第 {turn} 輪：使用者"
+}

@@ -1,0 +1,40 @@
+ ▐▛███▛█   Claude Code v2.1.296
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   /tmp/exp
+
+
+❯ Write mul.py with a function mul that multiplies two numbers. Do not run it.
+
+● Write(mul.py)
+  ⎿  Wrote 3 lines to mul.py
+      1 def mul(a, b):
+      2     """Return the product of a and b."""
+      3     return a * b
+
+● I created mul.py with a mul(a, b) function that returns a * b. As you asked, I didn't run it.
+
+✻ Cogitated for 3s · done 上午9:27
+
+❯ Reply with just: ok
+
+● ok
+
+✻ Brewed for 1s · done 上午9:28
+
+❯ Write div.py with a function div that divides two numbers. Do not run it.
+
+● Write(div.py)
+  ⎿  Wrote 3 lines to div.py
+      1 def div(a, b):
+      2     """Return a divided by b."""
+      3     return a / b
+
+● I created div.py with a div(a, b) function that returns a / b. It always returns a float, and dividing by zero raises
+  Python's usual ZeroDivisionError. As you asked, I didn't run it.
+
+✻ Baked for 3s · done 上午9:28
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Write sub.py with a function sub that subtracts two numbers
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)

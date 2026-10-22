@@ -1,0 +1,12 @@
+{"timestamp": "2026-10-05T03:10:27.810Z", "type": "session_meta", "payload": {"id": "01a10a0a-577d-78f0-b390-d594bfdf9eac", "cwd": "/work/project", "cli_version": "0.160.0"}}
+{"timestamp": "2026-10-05T03:10:27.812Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-1"}}
+{"timestamp": "2026-10-05T03:10:28.489Z", "type": "turn_context", "payload": {}}
+{"timestamp": "2026-10-05T03:10:28.517Z", "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "Remember the code word for later."}]}}
+{"timestamp": "2026-10-05T03:10:31.061Z", "type": "response_item", "payload": {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "NOTED"}]}}
+{"timestamp": "2026-10-05T03:10:31.215Z", "type": "event_msg", "payload": {"type": "task_complete", "turn_id": "turn-1", "last_agent_message": "NOTED"}}
+{"timestamp": "2026-10-05T03:10:43.506Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-2"}}
+{"timestamp": "2026-10-05T03:10:45.680Z", "type": "token_usage_record", "payload": {}}
+{"timestamp": "2026-10-05T03:10:45.681Z", "type": "compacted", "payload": {"message": "", "replacement_history": [{"type": "message", "role": "user", "content": [{"type": "input_text", "text": "Remember the code word for later."}]}]}}
+{"timestamp": "2026-10-05T03:10:45.681Z", "type": "event_msg", "payload": {"type": "thread_settings_applied"}}
+{"timestamp": "2026-10-05T03:10:45.685Z", "type": "event_msg", "payload": {"type": "item_completed", "turn_id": "turn-2", "item": {"type": "ContextCompaction"}}}
+{"timestamp": "2026-10-05T03:10:45.687Z", "type": "event_msg", "payload": {"type": "task_complete", "turn_id": "turn-2", "last_agent_message": null}}

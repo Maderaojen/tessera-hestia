@@ -1,0 +1,40 @@
+╭───────────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.157.1)                            │
+│                                                       │
+│ model:       GPT-6-Luna medium   /model to change     │
+│ directory:   ~/project │
+│ permissions: YOLO mode                                │
+╰───────────────────────────────────────────────────────╯
+
+• Model changed to gpt-6-astra max
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Select Reasoning Level for GPT-5.5
+
+
+  1. Low               Fast responses with lighter reasoning
+› 2. Medium (default)  Balances speed and reasoning depth for everyday tasks
+  3. High              Greater reasoning depth for complex problems
+  4. Extra high        Extra high reasoning depth for complex problems
+
+  enter default · s session · esc back

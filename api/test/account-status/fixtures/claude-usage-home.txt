@@ -1,0 +1,21 @@
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔ tmux detected · scroll with PgUp/PgDn · or add 'set -g mouse on' to ~/.tmux.conf for wheel scroll ▔
+   Settings  Status   Config   Usage   Stats
+
+   Session
+   Total cost:            $0.0000
+   Total duration (API):  0s
+   Total duration (wall): 13s
+   Total code changes:    0 lines added, 0 lines removed
+   Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+   Current session
+                                                      0% used
+
+   Current week (all models)
+   █████████████████████                              42% used
+   Resets Sep 26, 5:59am (Asia/Taipei)
+
+   Usage credits
+   Usage credits are off · /usage-credits to turn them on
+
+   Esc to cancel

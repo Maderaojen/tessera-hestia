@@ -1,0 +1,7 @@
+{
+  "launch.janus.failed": "Janus profile 查詢失敗，仍可使用原生 CLI。",
+  "launch.janus.notFound": "找不到 Janus，仍可使用原生 CLI。",
+  "launch.native.claude": "Claude (原生)",
+  "launch.native.codex": "Codex (原生)",
+  "launch.native.gemini": "Gemini CLI（相容）"
+}

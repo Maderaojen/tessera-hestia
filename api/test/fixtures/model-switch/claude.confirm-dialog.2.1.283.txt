@@ -1,0 +1,40 @@
+ ▐▛███▛█   Claude Code v2.1.283
+▝▜██████▀  Sonnet 5 with medium effort · Claude Pro
+ ▝▝   ▝▝   ~/project
+
+
+❯ /model sonnet
+  ⎿  Set model to Sonnet 5 and saved as your default for new sessions
+
+❯ /model default
+  ⎿  Set model to Sonnet 5 (default) and saved as your default for new sessions
+
+❯ /model haiku
+  ⎿  Set model to Haiku 4.5 and saved as your default for new sessions
+
+❯ /model fable
+  ⎿  Kept model as Haiku 4.5
+
+❯ /model fable
+  ⎿  Kept model as Haiku 4.5
+
+❯ /model sonnet
+  ⎿  Set model to Sonnet 5 and saved as your default for new sessions
+
+❯ /model fable
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Switch to Fable 5.1?
+
+  Fable 5.1 runs on usage credits — you have $0.57 in credits.
+
+  Usage credits are turned off. Re-enable to use Fable 5.1.
+
+  ❯ No, keep my current model
+    Set up usage credits on claude.ai
+
+
+  Enter to confirm · Esc to cancel
+
+
+

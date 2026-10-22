@@ -1,0 +1,25 @@
+#!/bin/sh
+# Link this into your PATH (e.g. ~/.local/bin; scripts/install.sh does).
+# Runs the built command — `npm run build` in api/ first. See
+# src/cli/main.ts. It reads the API's own settings (api/.env, a link into
+# the state folder) so it finds the port and token file the API uses, and
+# runs on the node the service runs on (HESTIA_NODE_BIN there: possibly the
+# installer's own download, when the machine's is too old).
+api="$(dirname "$(readlink -f "$0")")/.."
+env="$api/.env"
+if [ ! -f "$env" ]; then
+  # Its words are in scripts/i18n/locales, in the command's language.
+  HESTIA_I18N_DIR="$api/scripts/i18n"
+  . "$HESTIA_I18N_DIR/msg.sh"
+  if [ -L "$env" ]; then
+    printf '%s\n' "$(msg launcher.env.gone target "$(readlink "$env")" env "$env" installer "$api/scripts/install.sh")" >&2
+  else
+    printf '%s\n' "$(msg launcher.env.missing env "$env" installer "$api/scripts/install.sh")" >&2
+  fi
+  exit 1
+fi
+# The one value read without node, since it names the node: the installer
+# writes it as a bare path. Installs from before it kept it in .node-bin.
+node="$(sed -n 's/^HESTIA_NODE_BIN=//p' "$env" | tail -n 1)"
+if [ -z "$node" ] && [ -f "$api/.node-bin" ]; then node="$(cat "$api/.node-bin")"; fi
+exec "${node:-node}" --env-file="$env" "$api/dist/src/cli/main.js" "$@"

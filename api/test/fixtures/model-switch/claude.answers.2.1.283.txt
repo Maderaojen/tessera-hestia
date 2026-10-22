@@ -1,0 +1,40 @@
+ ▐▛███▛█   Claude Code v2.1.283
+▝▜██████▀  Sonnet 5 with medium effort · Claude Pro
+ ▝▝   ▝▝   ~/project
+
+
+❯ /model claude-sonnet-5
+  ⎿  Set model to Sonnet 5 and saved as your default for new sessions
+
+❯ /model nosuchmodel-xyz
+  ⎿  Model 'nosuchmodel-xyz' not found
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)                                                              ◐ medium · /effort
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

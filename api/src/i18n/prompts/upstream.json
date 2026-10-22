@@ -1,0 +1,8 @@
+{
+  "upstream.cut.omitted": "…（以下省略）",
+  "upstream.locations.archive": "{n}. Hestia 的對話歸檔：`{file}`（JSONL，一行一輪）。",
+  "upstream.locations.heading": "## 上游對話紀錄在哪裡",
+  "upstream.locations.intro": "需要更多背景時再讀，依推薦順序：",
+  "upstream.locations.transcriptJsonl": "{n}. CLI 自己的轉錄檔：`{file}`（JSONL，含工具呼叫等雜訊，很長）。",
+  "upstream.locations.transcriptSqlite": "{n}. CLI 自己的紀錄：`{file}`（SQLite 資料庫，不建議直接讀）。"
+}

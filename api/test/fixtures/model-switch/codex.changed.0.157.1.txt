@@ -1,0 +1,40 @@
+╭───────────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.157.1)                            │
+│                                                       │
+│ model:       GPT-6-Luna medium   /model to change     │
+│ directory:   ~/project │
+│ permissions: YOLO mode                                │
+╰───────────────────────────────────────────────────────╯
+
+• Model changed to gpt-6-astra max
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     Tip: Use /permissions to control when Codex asks for confirmation.
+
+› Ask Codex to do anything
+
+                                                          M A X
+  ? for shortcuts

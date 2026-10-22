@@ -1,0 +1,10 @@
+{
+  "account.probe.commandNotFound": "找不到指令 {command}",
+  "account.probe.loginRequired": "CLI 要求登入",
+  "account.probe.trustUnanswered": "CLI 的資料夾信任確認無法自動回應",
+  "account.probe.unsupported": "尚未支援查詢這個 provider 的用量",
+  "account.window.fiveHour": "5 小時",
+  "account.window.minutes": "{minutes} 分鐘",
+  "account.window.sevenDay": "7 天",
+  "account.window.sevenDayOf": "7 天（{qualifier}）"
+}

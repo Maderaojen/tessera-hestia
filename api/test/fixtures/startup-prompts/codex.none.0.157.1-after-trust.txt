@@ -1,0 +1,40 @@
+╭───────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.157.1)                        │
+│                                                   │
+│ model:       GPT-6-Luna medium   /model to change │
+│ directory:   /tmp/scratchpad/cx             │
+│ permissions: YOLO mode                            │
+╰───────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                 Tip: Use /status to see the current model, approvals, and token usage.
+
+› Ask Codex to do anything
+
+  GPT-6-Luna medium · Full Access · never · Context 100% left · Context 0% used · 5h 100% left · weekly 100% left
+  ? for shortcuts

@@ -1,0 +1,21 @@
+{
+  "typed.delegation.brief": "請讀 {file}，先用一段話回報你的理解，然後開始。",
+  "typed.delegation.eventAccepted": "使用者已接受這次交付，branch 可以合併。",
+  "typed.delegation.eventBlocked": "被指派者卡住了，需要決定。",
+  "typed.delegation.eventDeclined": "使用者拒絕了這個指派提案，沒有開始。",
+  "typed.delegation.eventDelivered": "被指派者已交付，等使用者驗收。",
+  "typed.delegation.eventExpired": "這個指派提案 24 小時沒有回應，已取消。",
+  "typed.delegation.eventRejected": "使用者拒絕了這次交付。",
+  "typed.delegation.eventReview": "被指派者已交付，請你先審查（通過或退回）。",
+  "typed.delegation.feedback": "[Hestia 指派 {id}] 你的交付被退回了（第 {round} 輪），意見請讀 {file}；改完 commit 後再用 {command} delegate done 交付（這是 App 自動送的通知，不是使用者打的字）。",
+  "typed.delegation.parent": "[Hestia 指派 {id}] {event}詳情請讀 {file}（這是 App 自動送的通知，不是使用者打的字）。",
+  "typed.fork.briefWaiting": "[Hestia 支線] 這是從另一個對話分出來的支線。請先讀 {file}，用一兩句話說明你的理解，然後等使用者的指示。（這是 App 自動送的訊息，不是使用者打的字）",
+  "typed.fork.briefWithInstruction": "[Hestia 支線] 這是從另一個對話分出來的支線。請先讀 {file}，用一兩句話說明你的理解，然後照裡面的指示開始。（這是 App 自動送的訊息，不是使用者打的字）",
+  "typed.handoff.briefAsk": "你要接手另一個 LLM 做到一半的工作。請先讀交接檔 {file}（開頭寫了現況和從哪裡接手，也寫了完整對話紀錄在哪裡，需要時再去翻），然後只回報你理解的現況和打算的下一步；先不要修改任何東西，等我確認。",
+  "typed.handoff.briefAuto": "你要接手另一個 LLM 做到一半的工作。請先讀交接檔 {file}（開頭寫了現況和從哪裡接手，也寫了完整對話紀錄在哪裡，需要時再去翻），然後接著把工作做下去。",
+  "typed.handoff.briefIncomingAsk": "你要接手另一個 LLM 做到一半的工作。請先讀交接檔 {file}（系統整理的現況，也寫了完整對話紀錄在哪裡），再去讀前面的對話紀錄，把你自己整理的理解寫在交接檔最後新的一節「{heading}」（任務目標、目前進度、下一步、要注意的事）；然後只回報你理解的現況和打算的下一步，除了交接檔先不要修改任何東西，等我確認。",
+  "typed.handoff.briefIncomingAuto": "你要接手另一個 LLM 做到一半的工作。請先讀交接檔 {file}（系統整理的現況，也寫了完整對話紀錄在哪裡），再去讀前面的對話紀錄，把你自己整理的理解寫在交接檔最後新的一節「{heading}」（任務目標、目前進度、下一步、要注意的事）；補完後接著把工作做下去。",
+  "typed.handoff.confirm": "確認，請開始。",
+  "typed.handoff.incomingNotesHeading": "## 接手者的整理",
+  "typed.handoff.writeBrief": "接下來這項工作會交給另一個 LLM 接手。請把交接內容用 Markdown 寫到 {file}：任務目標、目前進度、做過的決定和原因、改過的檔案、下一步、要注意的事。只寫這個檔案，寫完就停，不要做其他事。"
+}

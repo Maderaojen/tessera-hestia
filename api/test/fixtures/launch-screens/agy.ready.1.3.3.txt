@@ -1,0 +1,40 @@
+
+      ▄▀▀▄        Antigravity CLI 1.3.3
+     ▀▀▀▀▀▀       dev@example.com (Google AI Pro)
+    ▀▀▀▀▀▀▀▀      Gemini 4 Argon (Medium)
+   ▄▀▀    ▀▀▄     /tmp/scratchpad/agy/work
+  ▄▀▀      ▀▀▄
+
+
+ ┃ Verbosity now defaults to medium
+ ┃ Verbosity is now medium by default, so tool calls and thoughts roll up into summaries. You can change your preferred verbosity
+ ┃ anytime in /config > Verbosity.
+ ┃ esc to dismiss
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                                               Gemini 4 Argon · mediu
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

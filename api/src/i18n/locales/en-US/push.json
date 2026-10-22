@@ -1,0 +1,4 @@
+{
+  "push.session.awaitingApproval": "{cli} is waiting for your confirmation",
+  "push.session.replied": "{cli} finished replying"
+}

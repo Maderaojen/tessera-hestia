@@ -1,0 +1,36 @@
+OpenAI Codex v0.160.0
+--------
+workdir: /state/recap-runner-validation/runner
+model: gpt-6-luna
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a10b99-4dd7-7ac0-9b4e-c9458687c3f0
+--------
+user
+這是工具能力測試。不要呼叫任何工具。請逐字列出你目前工具清單（function/tool 定義）裡每一個工具的完整名稱，一行一個；如果一個都沒有，回答「沒有工具」。
+
+warning: Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.
+warning: Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`.
+ERROR: {
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_json_schema",
+    "message": "Invalid schema for response_format 'codex_output_schema': In context=(), 'additionalProperties' is required to be supplied and to be false.",
+    "param": "text.format.schema"
+  },
+  "status": 400
+}
+ERROR: {
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_json_schema",
+    "message": "Invalid schema for response_format 'codex_output_schema': In context=(), 'additionalProperties' is required to be supplied and to be false.",
+    "param": "text.format.schema"
+  },
+  "status": 400
+}

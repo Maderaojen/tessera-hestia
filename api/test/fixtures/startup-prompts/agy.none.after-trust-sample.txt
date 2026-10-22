@@ -1,0 +1,10 @@
+Accessing workspace:
+/tmp/agytrust.wTp3
+Do you trust the contents of this project?
+Antigravity CLI requires permission to read, edit, and execute files here.
+> Yes, I trust this folder
+  No, exit
+  ↑/↓ Navigate · enter Confirm
+> 
+──────
+? for shortcuts                accept-edits · Gemini 3.8 Flash

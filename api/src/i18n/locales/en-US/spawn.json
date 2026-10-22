@@ -1,0 +1,17 @@
+{
+  "spawn.prepare.tmuxFailed": "Couldn't create the tmux: {error}",
+  "spawn.prepare.workspaceFailed": "Couldn't create the working folder: {error}",
+  "spawn.session.forkConversationMissing": "The conversation to branch from couldn't be found",
+  "spawn.startup.neverStarted": "The CLI never finished starting",
+  "spawn.startup.noInputBox": "The CLI never showed a screen to type into",
+  "spawn.startup.notReady": "The CLI never got ready for its instructions",
+  "spawn.startup.notStarted": "The CLI didn't start",
+  "spawn.startup.readBriefYourself": "Have the CLI read {file} yourself",
+  "spawn.startup.relaunched": "The CLI exited after updating itself; started it again with the same settings",
+  "spawn.startup.trustStill": "\"Trust\" was chosen, but the prompt is still there",
+  "spawn.startup.trustUnsure": "The option couldn't be found; answer in the terminal",
+  "spawn.startup.unknownScreen": "The app doesn't recognize this screen; the instructions haven't been sent",
+  "spawn.startup.updatePromptUnsure": "The CLI is asking whether to update and the option couldn't be found; choose \"Skip\" in the terminal",
+  "spawn.startup.updateSkippedStill": "The CLI is asking whether to update; \"Skip\" was chosen but the prompt is still there. Deal with it in the terminal",
+  "spawn.startup.waitingElsewhere": "The CLI kept waiting for some other answer"
+}

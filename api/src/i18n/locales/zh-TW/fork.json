@@ -1,0 +1,12 @@
+{
+  "fork.attention.briefNotDelivered": "支線的說明沒有送進 CLI",
+  "fork.attention.cliExited": "支線的 CLI 在接手前就結束了",
+  "fork.attention.startupPrompt": "CLI 在等你回應啟動畫面",
+  "fork.attention.workspaceTrust": "CLI 在問要不要信任這個資料夾，請到 App 回答",
+  "fork.prepare.briefFailed": "無法寫入說明檔：{error}",
+  "fork.prepare.parentGone": "主線的工作階段已不存在",
+  "fork.push.launchFailed": "沒有啟動成功：{detail}",
+  "fork.push.sessionDeletedWorktreeKept": "工作階段已刪除，worktree 還在 {worktree}；要清掉請到「這個對話的支線」或 Git 面板的 Worktree",
+  "fork.push.title": "支線：{title}",
+  "fork.title.branchOf": "{title} 的支線"
+}

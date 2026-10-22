@@ -1,0 +1,50 @@
+
+  >_ OpenAI Codex (v0.160.0)
+     /tmp/probe/cwd-j
+
+  To get started, describe a task or try one of these commands:
+
+  /init - create an AGENTS.md file with instructions for Codex
+  /status - show current session configuration
+  /permissions - choose what Codex is allowed to do
+  /model - choose what model and reasoning effort to use
+  /review - review any changes and find issues
+
+
+› Remember the code word PELICAN-77 for later. Reply with exactly: NOTED
+
+
+• NOTED
+
+  Worked for 3s • 11:10 AM
+
+• Context compacted
+
+  Worked for 2s • 11:10 AM
+
+
+› What was the code word? Reply with only the code word.
+
+
+• PELICAN-77
+
+  Worked for 3s • 11:11 AM
+
+
+› Reply with exactly: DAEMON-OK
+
+
+• DAEMON-OK
+
+  Worked for 2s • 11:12 AM
+
+
+
+
+
+
+
+  🔒  This conversation is open in another app                                                                                                      r to retry
+      Close it there and press R to continue here.
+
+   r retry   f fork   esc/ctrl+c/q exit   ctrl+t transcript
