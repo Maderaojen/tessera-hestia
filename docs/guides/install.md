@@ -17,21 +17,27 @@
 
 ## 安裝
 
-### 已簽章版本安裝（需先配置信任公鑰）
-
-先依[發布簽章配置](release-signing.md)獨立取得並核對發布公鑰與本機安裝器。新版安裝器缺少可信任公鑰或簽章會停止；維護者須先完成第一個已簽章版本，舊未簽章版不支援。
+### 一行安裝（已簽章的版本）
 
 ```bash
-HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh /path/to/trusted-install.sh --tailscale
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh -s -- --tailscale
 ```
 
-安裝器路徑後面的參數會原封不動交給安裝腳本（見下方的參數表）。這一行會：
+`sh -s --` 後面的參數會原封不動交給安裝腳本（見下方的參數表）。這一行會：
 
-1. 從 [GitHub Releases](https://github.com/maderaojen/tessera-hestia/releases) 下載最新的版本包 `hestia-vX.Y.Z.tar.gz`、`SHA256SUMS` 與 `SHA256SUMS.sig`，先驗證發布簽章，再驗證 SHA-256，並確認版本包裡沒有跑出 `hestia-vX.Y.Z/` 的路徑或連結。
+1. 從 [GitHub Releases](https://github.com/maderaojen/tessera-hestia/releases) 下載最新的版本包 `hestia-vX.Y.Z.tar.gz`、`SHA256SUMS` 與 `SHA256SUMS.sig`，先用發布公鑰驗證簽章，再驗證 SHA-256，並確認版本包裡沒有跑出 `hestia-vX.Y.Z/` 的路徑或連結。發布公鑰寫在 `install.sh` 裡；第一次安裝時存成 `~/.local/share/hestia/release-public.pem`，之後的升級都用這個檔案驗證。
 2. 解壓到暫存的 `~/.local/share/hestia/app.new/`，帶上現有安裝的 `.env`，執行 `npm ci --omit=dev`（版本包已經建置好，不需要 build）。這一步失敗時，原本的安裝完全不動。
 3. 換成 `~/.local/share/hestia/app/`，接著執行版本包裡的 `scripts/install.sh`（帳號密碼、使用者服務（Linux 是 systemd，macOS 是 launchd）、Tailscale、配對 QR code）。問題會問在終端機上。
 
-可以用環境變數調整：`HESTIA_VERSION=vX.Y.Z`（裝指定版本，預設最新）、`HESTIA_HOME`（預設 `~/.local/share/hestia`）。例如 `HESTIA_VERSION=vX.Y.Z sh /path/to/trusted-install.sh`。
+可以用環境變數調整：`HESTIA_VERSION=vX.Y.Z`（裝指定版本，預設最新）、`HESTIA_HOME`（預設 `~/.local/share/hestia`）、`HESTIA_RELEASE_PUBLIC_KEY`（改用你自己放的公鑰檔）。環境變數要給 `sh`，例如 `curl -fsSL … | HESTIA_VERSION=vX.Y.Z sh -s -- --tailscale`。
+
+想先看過安裝器再執行：下載下來，核對其中公鑰的指紋（[發布簽章](release-signing.md)「一行安裝信任的是什麼」），再執行它：
+
+```bash
+curl -fsSLO https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh
+less install.sh
+sh install.sh --tailscale
+```
 
 **重跑就是升級**：設定與資料都在狀態資料夾 `~/.config/madera/hestia/`（設定是裡面的 `.env`），都會保留，服務重新啟動，tmux 裡的對話不受影響。
 
@@ -52,8 +58,8 @@ tessera-hestia/api/scripts/install.sh --tailscale
 
 ```bash
 printf '%s\n' "$PASSWORD" | api/scripts/install.sh --yes --username me --password-stdin --tailscale
-# 使用已核對的本機安裝器時也可以使用環境變數：
-HESTIA_PASSWORD="$PASSWORD" sh /path/to/trusted-install.sh --yes --username me --tailscale
+# 一行安裝也可以用環境變數：
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | HESTIA_PASSWORD="$PASSWORD" sh -s -- --yes --username me --tailscale
 ```
 
 | 參數 | 用途 |
@@ -228,7 +234,7 @@ Hestia App（iOS、Android）也可以經由 SSH 連到後端：App 在手機上
 
 ```bash
 # 一行安裝的：重跑同一行
-HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh /path/to/trusted-install.sh
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh
 # 從原始碼安裝的
 cd tessera-hestia && git pull
 api/scripts/install.sh

@@ -25,13 +25,11 @@ Requires Linux (a systemd user service), tmux and at least one AI CLI. No root n
 
 > **The backend must not be exposed to the internet.** A Hestia backend amounts to full control of this machine (it can run any command as you). Use it only through Tailscale or the Hestia app's SSH connection; don't expose the backend to the internet by any other means (a reverse proxy, a tunnel service, a port forward on your router, a changed listen address): then the only thing protecting it is the username and password.
 
-First follow [release signing setup](docs/guides/release-signing.en.md) to independently verify the public key and installer. The new installer requires a signed release and a trusted local public key; maintainers must provision the initial production key.
-
 ```bash
-HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh /path/to/trusted-install.sh --tailscale
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh -s -- --tailscale
 ```
 
-It downloads the latest backend bundle from [Releases](https://github.com/maderaojen/tessera-hestia/releases), first verifies the release signature, then its SHA-256 and puts it in `~/.local/share/hestia/app/`; then asks for a sign-in account and password and starts the backend as a systemd user service; installs Tailscale for you when needed and prints the sign-in address; and finally prints a **QR code**. Once the phone has the Tailscale app installed and signed in to the same account, tap "Scan QR code" under "Add host" in the Hestia app (or scan it with the camera), check the host address on screen, and the host is added and signed in (a one-time pairing code, valid for 3 minutes). To add another phone later, run `hestia pair`.
+It downloads the latest backend bundle from [Releases](https://github.com/maderaojen/tessera-hestia/releases), first verifies the release signature with the public key in the installer, then its SHA-256 (to read the installer and check the key's fingerprint before running it, see [release signatures](docs/guides/release-signing.en.md)), and puts it in `~/.local/share/hestia/app/`; then asks for a sign-in account and password and starts the backend as a systemd user service; installs Tailscale for you when needed and prints the sign-in address; and finally prints a **QR code**. Once the phone has the Tailscale app installed and signed in to the same account, tap "Scan QR code" under "Add host" in the Hestia app (or scan it with the camera), check the host address on screen, and the host is added and signed in (a one-time pairing code, valid for 3 minutes). To add another phone later, run `hestia pair`.
 
 **Upgrading**: run the same line again. Settings and data both live in `~/.config/madera/hestia/`, and are kept, and conversations in tmux are not affected. For a specific version, put `HESTIA_VERSION=vX.Y.Z` before `sh`.
 

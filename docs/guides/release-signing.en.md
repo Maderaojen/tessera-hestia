@@ -1,52 +1,95 @@
 # Backend release signatures
 
-- Updated: 2026-10-18
+- Updated: 2026-10-22
 - 中文：[release-signing.md](release-signing.md)
 
-Backend bundles require an RSA/SHA-256 detached signature of `SHA256SUMS`.
+Backend bundles carry an RSA/SHA-256 detached signature of `SHA256SUMS`.
 The installer verifies `SHA256SUMS.sig` before trusting a checksum, unpacking,
-or executing any bundle. There is no unsigned fallback. Native app update keys
-are a separate trust domain and are not reused.
+or executing any bundle. There is no unsigned fallback: a release without a
+signature, or with one that doesn't verify, stops the installer. Native app
+update keys are a separate trust domain and are not reused.
 
-## Initial provisioning (required before the next release)
+## The release public key
 
-No production backend release public key was present in this repository during
-this migration. This change does not generate a production key or publish a
-release. An operator must perform the following bootstrap:
+The SHA-256 fingerprint (of the DER form) of the current release public key
+(RSA 3072):
 
-1. On a protected signing machine, create and securely back up an RSA private
-   key of at least 3072 bits, for example with `umask 077; openssl genpkey -algorithm RSA
-   -pkeyopt rsa_keygen_bits:3072 -out release-private.pem`. Keep it outside the
-   repository and restrict its permissions. Never ship the private key.
-2. Export the public key using `openssl pkey -in release-private.pem -pubout
-   -out release-public.pem`. Record its SHA-256 fingerprint over the DER public
-   key (`openssl pkey -pubin -in release-public.pem -outform DER | openssl
-   dgst -sha256`) in an independently authenticated channel. Have a second
-   operator verify the fingerprint.
-3. Provision that public key on installer machines at
-   `$HESTIA_HOME/release-public.pem` (default
-   `~/.local/share/hestia/release-public.pem`), or supply an existing trusted
-   local path with `HESTIA_RELEASE_PUBLIC_KEY`. It must not be fetched from the
-   release alongside its signature. Store it in a directory writable only by
-   its owner. Upgrades leave this trust root outside `app/` and retain it.
-4. Set `HESTIA_RELEASE_SIGNING_KEY` to the protected private-key path and
-   `HESTIA_RELEASE_PUBLIC_KEY` to the independently checked public-key path
-   when running `scripts/release-public.sh`. Publishing fails without both;
-   a dry run without keys produces review artifacts only, which the new
-   installer intentionally rejects. A mismatched pair fails verification.
-5. Publish the first signed release and distribute the trusted installer and
-   public-key fingerprint through the authenticated bootstrap channel.
+```
+63decd33da1896e188725c3264e0778b7bcaf32c2d52b3e1ff1b81dfa757084a
+```
 
-Old unsigned releases cannot be installed by the new installer. To migrate,
-provision the public key first, then upgrade to the first signed release.
-Retain a reviewed installer locally for future upgrades. Downloading and
-executing a fresh shell script from a compromised release account bypasses
-anything implemented inside that script: bundle signatures do not authenticate
-an already compromised bootstrap installer. Distribute or verify that installer
-independently. TLS-only `curl | sh` remains a trust-in-the-script bootstrap.
+The key is written in `install.sh` (`EMBEDDED_RELEASE_PUBLIC_KEY`). The
+installer uses, in this order:
 
-For rotation, authenticate the new fingerprint with the current trust root or
-an independently authenticated channel, explicitly replace the local public
-key, and only then switch releases. Never automatically trust a key downloaded
-from a release. Signatures authenticate bytes, not freshness; an explicitly
-selected older signed version remains installable.
+1. the file `HESTIA_RELEASE_PUBLIC_KEY` names;
+2. `$HESTIA_HOME/release-public.pem` (default
+   `~/.local/share/hestia/release-public.pem`), when there is one; it says so
+   in one line when it isn't the key in `install.sh`;
+3. the key in `install.sh`. On a first install, with no key file yet, it is
+   saved as `$HESTIA_HOME/release-public.pem` once the release verifies
+   (mode 644, in a folder only its owner can write), and later upgrades go by
+   that file. Upgrades never change it.
+
+## What the one-line install trusts
+
+The one-line install (`curl -fsSL …/install.sh | sh`) trusts **the
+`install.sh` downloaded over HTTPS from GitHub**, with the key written in it.
+If the GitHub account or repository is compromised, an attacker can change
+the installer and the key together, or have the installer skip every check;
+the bundle signatures can't stop that.
+
+What the signatures do stop:
+
+- a bundle or `SHA256SUMS` swapped on the Release's assets or on a mirror
+  (`HESTIA_DOWNLOAD_BASE`) alone;
+- an upgrade run by an installer that already has its key: the local key
+  file, or an installer you kept, doesn't start trusting a new key because a
+  new Release carries one.
+
+For a stronger guarantee, don't hand the downloaded script straight to `sh`:
+
+- Download `install.sh`, read it, and check the fingerprint of its key through
+  another channel (the `~/.local/share/hestia/release-public.pem` of a machine
+  that is already installed, someone you trust):
+
+  ```bash
+  sed -n '/-----BEGIN PUBLIC KEY-----/,/-----END PUBLIC KEY-----/p' install.sh \
+    | sed "s/^EMBEDDED_RELEASE_PUBLIC_KEY='//; s/'\$//" \
+    | openssl pkey -pubin -outform DER | openssl dgst -sha256
+  ```
+
+- Or provide the key file yourself: a public key whose fingerprint you checked,
+  at `$HESTIA_HOME/release-public.pem` or named by `HESTIA_RELEASE_PUBLIC_KEY`.
+- Keep an installer you checked, and upgrade with it
+  (`HESTIA_VERSION=vX.Y.Z sh install.sh`).
+
+Signatures authenticate bytes, not freshness: an explicitly selected older
+signed version remains installable.
+
+## Rotating the key
+
+The new public key goes into `EMBEDDED_RELEASE_PUBLIC_KEY` in `install.sh`, in
+the same commit as the first release signed with the new private key; the
+fingerprint in this document changes with it.
+
+Machines that are already installed don't trust the new key on their own:
+check the new fingerprint with the current trust root or another independent
+channel, explicitly replace the local `release-public.pem` (or
+`HESTIA_RELEASE_PUBLIC_KEY`), then upgrade. Never automatically trust a new key
+that comes with a bundle or a Release.
+
+## Maintainers: signing and publishing
+
+- The private key is RSA 3072 (`openssl genpkey -algorithm RSA -pkeyopt
+  rsa_keygen_bits:3072`), kept outside the repository, readable by its owner
+  only, and backed up safely; it never ships.
+- Publishing sets `HESTIA_RELEASE_SIGNING_KEY` (the private key) and
+  `HESTIA_RELEASE_PUBLIC_KEY` (the public key). Before changing anything, the
+  release script checks that both are there, that they are a pair, and that
+  the key written in `install.sh` at the commit being published is this one
+  (otherwise the installer it publishes couldn't verify its own Release); any
+  mismatch stops it.
+- The release script puts the key's fingerprint and the one-line install in
+  the Release notes.
+- A dry run without keys is for review only: its artifacts are unsigned, and
+  the installer won't accept them.

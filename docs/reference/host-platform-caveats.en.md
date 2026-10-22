@@ -27,7 +27,7 @@ Each entry's ID is shared with the code's error codes, interface text keys and p
 | [`macos.xcode.no-accounts`](#macosxcodeno-accounts) | macOS | Recorded | Exporting an iOS app from a session fails with `xcodebuild` saying `No Accounts` |
 | [`macos.tailscale.app-only`](#macostailscaleapp-only) | macOS | Handled | The Tailscale app can't serve a folder; a separately installed `tailscaled` runs as root |
 | [`all.tailscale.port-taken`](#alltailscaleport-taken) | All | Handled | The tailnet HTTPS port is already used by another service |
-| [`web.chromium.local-network-access`](#webchromiumlocal-network-access) | Web (Chromium browsers) | Recorded only | A new frontend address can't reach the backend: the browser has to allow "local network access" again |
+| [`web.chromium.local-network-access`](#webchromiumlocal-network-access) | Web (Chromium browsers) | Hinted | A new frontend address can't reach the backend: the browser has to allow "local network access" again |
 | [`macos.ps.bsd`](#macospsbsd) | macOS | Handled | BSD `ps` options, columns and time format differ from Linux |
 | [`macos.tmux.pane-command`](#macostmuxpane-command) | macOS | Handled | tmux names a pane's program by its executable file; Claude Code becomes a version number |
 | [`macos.bash32.multibyte-var`](#macosbash32multibyte-var) | macOS | Handled | bash 3.2 takes a multibyte character right after a variable as part of its name |
@@ -162,9 +162,9 @@ Each entry's ID is shared with the code's error codes, interface text keys and p
 - **Platform**: the web app in Chrome and other Chromium browsers (seen in Chrome 155 on macOS); first seen 2026-10-22
 - **What you see**: after opening a new frontend address (moving a development frontend to another subdomain, say), adding the host or logging in keeps failing as if the backend were down, while the same backend works from the old address.
 - **Why**: the backend is only on Tailscale (a `100.x` address), which Chromium treats as the local network. A public site may only reach local addresses once you allow "local network access", and that permission is kept **per site**: the old address was allowed, the new one has to be allowed again. Until then the request is blocked before it is sent; the console says `Permission was denied for this request to access the 'local' address space` and the page only gets `Failed to fetch`, which looks the same as a stopped backend or a CORS mismatch.
-- **How to detect**: the page can't tell why, only that the request failed. From the host the backend is fine (`curl` to localhost and to the ts.net address answer 200, and the CORS preflight is right).
-- **What to do**: allow local network access for that address and reload: click the icon left of the address bar → Site settings → Local network access → Allow (or Chrome Settings → Privacy and security → Site settings → Additional permissions → Local network access). The apps are not affected. A hint in the login page's connection error is planned.
-- **Status**: Recorded only
+- **How to detect**: the failed request itself doesn't say why. When a login fails to connect (a `TypeError`), the login page looks at two more things: whether the browser is Chromium (`navigator.userAgentData.brands` includes `Chromium`), and what `navigator.permissions.query({ name: 'local-network-access' })` answers; anything but `granted`, or a browser that doesn't know the permission's name, counts as possibly this (`web/src/views/login/loginError.ts`). From the host the backend is fine (`curl` to localhost and to the ts.net address answer 200, and the CORS preflight is right).
+- **What to do**: allow local network access for that address and reload: click the icon left of the address bar → Site settings → Local network access → Allow (or Chrome Settings → Privacy and security → Site settings → Additional permissions → Local network access). The apps are not affected. The connection error on the login and add-host forms says to do this (interface text `login.error.chromiumLocalNetworkAccess`); once the permission is granted, the usual connection error is shown.
+- **Status**: Hinted
 
 ## iOS app
 

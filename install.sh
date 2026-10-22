@@ -1,21 +1,27 @@
 #!/bin/sh
 # Hestia's one-line installer, and its upgrader: run it again to upgrade.
 #
-#   HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh ./install.sh
-#   HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh ./install.sh --tailscale
+#   curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh -s -- --tailscale
 #
-# Obtain this installer and verify the public key independently first. See
-# docs/guides/release-signing.md; bundle signatures cannot secure a modified
-# bootstrap script.
+# or download it first, look at it, check the fingerprint of the public key
+# below, then run it: sh ./install.sh --tailscale. What the one-line form
+# trusts, and how to check it some other way: docs/guides/release-signing.md.
 #
-# Downloads a release bundle of the backend (already built), checks it
-# against the release's SHA256SUMS, unpacks it into
+# Downloads a release bundle of the backend (already built), checks the
+# release's signature (SHA256SUMS.sig, with the release public key) and the
+# bundle against its SHA256SUMS, unpacks it into
 # ~/.local/share/hestia/app (keeping that install's .env), installs its
 # runtime dependencies (npm ci --omit=dev, in a staging folder first, so a
 # failure leaves the running install alone), then hands over to the
 # bundle's own scripts/install.sh with every option given here: the
 # account, the user service (systemd on Linux, launchd on macOS), Tailscale,
 # pairing. See docs/guides/install.md.
+#
+# The release public key: HESTIA_RELEASE_PUBLIC_KEY if given, otherwise
+# $HESTIA_HOME/release-public.pem if there is one, otherwise the one
+# written in this file (EMBEDDED_RELEASE_PUBLIC_KEY), which the first
+# install then saves as $HESTIA_HOME/release-public.pem: later upgrades
+# trust that file, not whatever installer they were run with.
 #
 # Settings and data stay where they are across upgrades: both live in
 # ~/.config/madera/hestia (the settings in its .env, which the app folder's
@@ -29,10 +35,10 @@
 #                         (default: https://github.com/$HESTIA_REPO/releases/download;
 #                         a file:// URL works too, for testing a release locally)
 #   HESTIA_HOME           default: ${XDG_DATA_HOME:-~/.local/share}/hestia
-#                         (the program in app/, a downloaded Node.js in node/)
-#   HESTIA_RELEASE_PUBLIC_KEY  trusted local RSA public key PEM (required;
-#                         default: $HESTIA_HOME/release-public.pem). Provision
-#                         independently; never download it with the bundle.
+#                         (the program in app/, a downloaded Node.js in node/,
+#                         the release public key in release-public.pem)
+#   HESTIA_RELEASE_PUBLIC_KEY  a release public key (RSA, PEM) to use instead
+#                         of the saved or the embedded one
 #   HESTIA_NO_SETUP=1     stop once the new version is unpacked and its
 #                         dependencies installed: no .env, service, link or
 #                         Tailscale changes (for testing)
@@ -64,11 +70,48 @@ else
   die "找不到 sha256sum 或 shasum，無法驗證下載的檔案"
 fi
 
-# A local trust root must be provisioned independently of the release host.
+# The release public key (RSA 3072), SHA-256 fingerprint of its DER form:
+# 63decd33da1896e188725c3264e0778b7bcaf32c2d52b3e1ff1b81dfa757084a
+# (openssl pkey -pubin -in release-public.pem -outform DER | openssl dgst -sha256).
+# A new key is changed here, in the same commit as the release that is
+# signed with it; existing installs keep their saved key until it is
+# replaced on purpose (docs/guides/release-signing.md).
+EMBEDDED_RELEASE_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----
+MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAys/V+dKxLM3+to5XGJvX
+ZrB03XKJzBOqRI+Qb99GMewP42iWtBBbbEU/9InQWMAIRMyT/qblCQQ7T9y6qoVL
+O51GGqgcGbiJ8E3xSjESLdAfsyF3jT/pc/KlxZSFMeFk2byHJGOWdACbL0k1kLPL
+1X8byyRzjR7XwGQEd76MXx90cWeWJ2Qq5P19YdIFid5sIWdqvJLUzakA9Buvdquy
+14he+6RNrKf2ZMD2Chz6Gush2mvhsL7z1/inOIE7wWiFRLNNvwiCwu8k2obKcYHL
+UJ1M1ABmF6wSguPmMzcpc3TwzdXUnLljZSty55+qVvkAqOcy+CUD4Vfj3G+pfGw6
+fhd7yXMpm24wNLpewB9Fujp4rXS6UyNOe/F+/Q5euW00ZAM8dKOC+/OWPKFiOtvG
+jz676JSLlAsIr72XQK1/L+BJGdCDv7TQWuZz4nDg/ClLHua9GiBbMmU4SWFZ+JKG
+sZnuyx6kq/fBzK1bnrcHtR+0KRvmQZMGd3I/Nl3F/VLhAgMBAAE=
+-----END PUBLIC KEY-----'
+
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/hestia-get.XXXXXX")"
+trap 'rm -rf "$TMP"' EXIT INT TERM
+
+# fingerprint PEM — SHA-256 of a public key's DER form, as in the comment above.
+fingerprint() { openssl pkey -pubin -in "$1" -outform DER 2>/dev/null | openssl dgst -sha256 | sed 's/^.*= *//'; }
+
 # No unsigned fallback: a checksum from the same origin is not authentication.
-RELEASE_PUBLIC_KEY="${HESTIA_RELEASE_PUBLIC_KEY:-$HESTIA_HOME/release-public.pem}"
-[ -f "$RELEASE_PUBLIC_KEY" ] || die "缺少可信任的發布公鑰：${RELEASE_PUBLIC_KEY}；請依安裝指南獨立核對並配置 HESTIA_RELEASE_PUBLIC_KEY"
-openssl pkey -pubin -in "$RELEASE_PUBLIC_KEY" -noout >/dev/null 2>&1 || die "發布公鑰不是有效的 PEM"
+printf '%s\n' "$EMBEDDED_RELEASE_PUBLIC_KEY" >"$TMP/embedded-release-public.pem"
+SAVED_PUBLIC_KEY="$HESTIA_HOME/release-public.pem"
+SAVE_PUBLIC_KEY=0
+if [ -n "${HESTIA_RELEASE_PUBLIC_KEY:-}" ]; then
+  RELEASE_PUBLIC_KEY="$HESTIA_RELEASE_PUBLIC_KEY"
+  [ -f "$RELEASE_PUBLIC_KEY" ] || die "找不到 HESTIA_RELEASE_PUBLIC_KEY 指定的發布公鑰：${RELEASE_PUBLIC_KEY}"
+elif [ -f "$SAVED_PUBLIC_KEY" ]; then
+  RELEASE_PUBLIC_KEY="$SAVED_PUBLIC_KEY"
+else
+  RELEASE_PUBLIC_KEY="$TMP/embedded-release-public.pem"
+  SAVE_PUBLIC_KEY=1
+fi
+if [ "$SAVE_PUBLIC_KEY" = 1 ]; then KEY_NAME="這個安裝器內建的公鑰"; else KEY_NAME="$RELEASE_PUBLIC_KEY"; fi
+openssl pkey -pubin -in "$RELEASE_PUBLIC_KEY" -noout >/dev/null 2>&1 || die "發布公鑰不是有效的 PEM：${KEY_NAME}"
+if [ "$SAVE_PUBLIC_KEY" = 0 ] && [ "$(fingerprint "$RELEASE_PUBLIC_KEY")" != "$(fingerprint "$TMP/embedded-release-public.pem")" ]; then
+  say "使用 ${RELEASE_PUBLIC_KEY} 的發布公鑰（和這個安裝器內建的不同）"
+fi
 
 # ---- which version ---------------------------------------------------------
 
@@ -91,17 +134,24 @@ printf '\nHestia %s\n' "$VERSION"
 
 # ---- download and verify ---------------------------------------------------
 
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/hestia-get.XXXXXX")"
-trap 'rm -rf "$TMP"' EXIT INT TERM
-
 say "下載 ${BUNDLE}…"
 curl -fsSL "$DOWNLOAD_BASE/$VERSION/$BUNDLE" -o "$TMP/$BUNDLE" || die "下載失敗：$DOWNLOAD_BASE/$VERSION/$BUNDLE"
 curl -fsSL "$DOWNLOAD_BASE/$VERSION/SHA256SUMS" -o "$TMP/SHA256SUMS" || die "下載失敗：$DOWNLOAD_BASE/$VERSION/SHA256SUMS"
 
 curl -fsSL "$DOWNLOAD_BASE/$VERSION/SHA256SUMS.sig" -o "$TMP/SHA256SUMS.sig" || die "下載發布簽章失敗"
 openssl dgst -sha256 -verify "$RELEASE_PUBLIC_KEY" -signature "$TMP/SHA256SUMS.sig" "$TMP/SHA256SUMS" >/dev/null 2>&1 \
-  || die "發布簽章驗證失敗，已放棄"
+  || die "發布簽章驗證失敗，已放棄（用的公鑰：${KEY_NAME}）"
 say "✓ 發布簽章驗證通過"
+# The first install keeps the key it trusted: upgrades check against it,
+# whichever installer runs them. Only the owner can change the folder.
+if [ "$SAVE_PUBLIC_KEY" = 1 ]; then
+  mkdir -p "$HESTIA_HOME"
+  chmod go-w "$HESTIA_HOME"
+  cp "$RELEASE_PUBLIC_KEY" "$SAVED_PUBLIC_KEY.new"
+  chmod 644 "$SAVED_PUBLIC_KEY.new"
+  mv "$SAVED_PUBLIC_KEY.new" "$SAVED_PUBLIC_KEY"
+  say "✓ 發布公鑰存成 ${SAVED_PUBLIC_KEY}，之後的升級以它為準"
+fi
 
 expected="$(awk -v f="$BUNDLE" '$2 == f || $2 == "*" f { print $1 }' "$TMP/SHA256SUMS")"
 [ -n "$expected" ] || die "SHA256SUMS 裡沒有 $BUNDLE"

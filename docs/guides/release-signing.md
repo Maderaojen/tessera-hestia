@@ -1,43 +1,76 @@
 # 後端發布簽章
 
-- 更新：2026-10-18
+- 更新：2026-10-22
 - 英文版：[release-signing.en.md](release-signing.en.md)
 
-後端版本包改用 RSA／SHA-256 簽署 `SHA256SUMS`，安裝器先驗證
-`SHA256SUMS.sig`，才相信 checksum、解壓或執行程式。沒有未簽章備援。
-手機 App 更新金鑰是不同的信任用途，不共用。
+後端版本包用 RSA／SHA-256 簽署 `SHA256SUMS`，安裝器先驗證
+`SHA256SUMS.sig`，才相信 checksum、解壓或執行程式。沒有未簽章備援：
+沒有簽章、或簽章驗不過的版本，安裝器一律停止。手機 App 更新金鑰是不同的
+信任用途，不共用。
 
-## 首次配置：下次發布前必須完成
+## 發布公鑰
 
-本次檢查沒有找到已配置的正式後端發布公鑰。本次修正沒有產生正式私鑰、
-也沒有發布版本；需要維護者執行以下步驟：
+目前的發布公鑰（RSA 3072）的 SHA-256 指紋（DER 格式）：
 
-1. 在受保護的簽章機器上執行 `umask 077`，再以
-   `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out release-private.pem`
-   建立至少 3072 位元的 RSA 私鑰。私鑰放在 repo 外、限制存取並安全備份，
-   不可隨版本發布。
-2. 用 `openssl pkey -in release-private.pem -pubout -out release-public.pem`
-   匯出公鑰。用 `openssl pkey -pubin -in release-public.pem -outform DER | openssl dgst -sha256`
-   取得公鑰指紋，透過獨立且可信任的管道公布，並由第二人核對。
-3. 使用者先獨立核對指紋，再把公鑰放到 `$HESTIA_HOME/release-public.pem`
-   （預設 `~/.local/share/hestia/release-public.pem`），或透過
-   `HESTIA_RELEASE_PUBLIC_KEY` 指定可信任的本機檔案。公鑰不可跟版本包一起
-   從同個發布來源下載後就直接相信。所在目錄只允許本人寫入。升級保留
-   `app/` 外的公鑰。
-4. 發布時設定 `HESTIA_RELEASE_SIGNING_KEY` 為受保護的私鑰路徑、
-   `HESTIA_RELEASE_PUBLIC_KEY` 為獨立核對的公鑰路徑，再執行發布腳本。
-   `--publish` 缺任何金鑰即停止，公私鑰不符也停止。未設定金鑰的 dry run
-   僅供檢視，產物不能交給新版安裝器安裝。
-5. 發布第一個已簽章版本，並透過可信任的初次安裝管道提供安裝器及公鑰指紋。
+```
+63decd33da1896e188725c3264e0778b7bcaf32c2d52b3e1ff1b81dfa757084a
+```
 
-舊的未簽章版本不能用新版安裝器安裝。遷移時先配置公鑰，再升級到第一個
-已簽章版本。保留獨立核對過的本機安裝器，供未來升級使用。
+公鑰寫在 `install.sh` 裡（`EMBEDDED_RELEASE_PUBLIC_KEY`）。安裝器依序使用：
 
-**版本包簽章不能保護已遭竄改的初始安裝腳本。** 如果每次都從遭入侵的
-發布帳號下載 shell 並直接執行，惡意腳本可以跳過所有驗證。安裝器本身也
-必須透過獨立的可信任管道分發或核對；單靠 TLS 的 `curl | sh` 仍然是在
-信任下載的腳本。
+1. `HESTIA_RELEASE_PUBLIC_KEY` 指定的檔案；
+2. `$HESTIA_HOME/release-public.pem`（預設 `~/.local/share/hestia/release-public.pem`），
+   有這個檔案時；和 `install.sh` 內建的不同時會印一行說明；
+3. `install.sh` 內建的公鑰。第一次安裝、本機還沒有公鑰檔時，驗證通過後把它
+   存成 `$HESTIA_HOME/release-public.pem`（權限 644，資料夾只有本人可寫），
+   之後的升級以這個檔案為準。升級不會改動它。
 
-更換金鑰時，先以原信任根或其他獨立可信任管道核對新指紋，明確更新本機
-公鑰，再切換發布金鑰，不可自動相信版本包內的新公鑰。簽章保證內容真實，
-不保證版本最新；明確指定較舊的已簽章版本仍可安裝。
+## 一行安裝信任的是什麼
+
+一行安裝（`curl -fsSL …/install.sh | sh`）的信任根是**經 HTTPS 從 GitHub
+下載的 `install.sh`**，連同寫在裡面的公鑰。GitHub 帳號或 repo 被入侵時，
+攻擊者可以同時改掉安裝器與公鑰，或讓安裝器跳過所有驗證；版本包的簽章擋不住
+這種情況。
+
+簽章擋得住的是：
+
+- 只換掉 Release 附件或鏡像（`HESTIA_DOWNLOAD_BASE`）上的版本包或 `SHA256SUMS`；
+- 用已經存好公鑰的安裝器升級：本機的公鑰檔、或你保留下來的安裝器，都不會因為
+  新的 Release 換了公鑰就跟著相信新的。
+
+要更強的保證，不要直接把下載的腳本交給 `sh`：
+
+- 先下載 `install.sh`，看過內容，再用另一個管道（例如已經安裝過的機器上的
+  `~/.local/share/hestia/release-public.pem`、你信任的人）核對其中公鑰的指紋：
+
+  ```bash
+  sed -n '/-----BEGIN PUBLIC KEY-----/,/-----END PUBLIC KEY-----/p' install.sh \
+    | sed "s/^EMBEDDED_RELEASE_PUBLIC_KEY='//; s/'\$//" \
+    | openssl pkey -pubin -outform DER | openssl dgst -sha256
+  ```
+
+- 或自己放公鑰檔：核對過指紋的公鑰放在 `$HESTIA_HOME/release-public.pem`，或用
+  `HESTIA_RELEASE_PUBLIC_KEY` 指定。
+- 保留一份核對過的安裝器，之後用它升級（`HESTIA_VERSION=vX.Y.Z sh install.sh`）。
+
+簽章保證內容真實，不保證版本最新：明確指定較舊的已簽章版本仍可安裝。
+
+## 更換金鑰
+
+新公鑰寫進 `install.sh` 的 `EMBEDDED_RELEASE_PUBLIC_KEY`，和第一個用新私鑰
+簽章的版本同一個 commit；這份文件的指紋一起改。
+
+已經安裝過的機器不會自動相信新公鑰：先用原本的信任根或其他獨立的管道核對
+新指紋，明確更新本機的 `release-public.pem`（或 `HESTIA_RELEASE_PUBLIC_KEY`），
+再升級。不要自動相信版本包或 Release 裡附帶的新公鑰。
+
+## 維護者：簽章與發布
+
+- 私鑰是 RSA 3072（`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072`），
+  放在 repo 外、只有本人可讀，另外安全備份；永遠不隨版本發布。
+- 發布時設定 `HESTIA_RELEASE_SIGNING_KEY`（私鑰）與 `HESTIA_RELEASE_PUBLIC_KEY`
+  （公鑰）。發布腳本在動到任何東西之前確認：兩個都有、公私鑰相符，而且要發布的
+  commit 裡 `install.sh` 內建的公鑰就是這一把（不然發出去的安裝器驗不過自己的
+  Release）；任何一項不符就停止。
+- 發布腳本把公鑰指紋與一行安裝寫進 Release 說明。
+- 沒有設定金鑰的 dry run 只供檢視，產物沒有簽章，安裝器不會接受。

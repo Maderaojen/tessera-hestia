@@ -27,7 +27,7 @@
 | [`macos.xcode.no-accounts`](#macosxcodeno-accounts) | macOS | 只記錄 | 在工作階段裡匯出 iOS App 時 `xcodebuild` 說 `No Accounts` |
 | [`macos.tailscale.app-only`](#macostailscaleapp-only) | macOS | 已處理 | Tailscale App 不能分享資料夾；另裝的 `tailscaled` 以 root 執行 |
 | [`all.tailscale.port-taken`](#alltailscaleport-taken) | 全部 | 已處理 | tailnet 的 HTTPS 埠已經給別的服務用了 |
-| [`web.chromium.local-network-access`](#webchromiumlocal-network-access) | 網頁版（Chromium 瀏覽器） | 只記錄 | 換一個前端網址後連不上後端：瀏覽器要重新允許「區域網路存取」 |
+| [`web.chromium.local-network-access`](#webchromiumlocal-network-access) | 網頁版（Chromium 瀏覽器） | 有提示 | 換一個前端網址後連不上後端：瀏覽器要重新允許「區域網路存取」 |
 | [`macos.ps.bsd`](#macospsbsd) | macOS | 已處理 | BSD `ps` 的參數、欄位和時間格式和 Linux 不同 |
 | [`macos.tmux.pane-command`](#macostmuxpane-command) | macOS | 已處理 | tmux 用執行檔檔名回報 pane 裡的程式，Claude Code 變成版本號 |
 | [`macos.bash32.multibyte-var`](#macosbash32multibyte-var) | macOS | 已處理 | bash 3.2 把緊接在變數後面的中文字當成變數名稱 |
@@ -162,9 +162,9 @@
 - **平台**：Chrome 等 Chromium 瀏覽器的網頁版（實測 Chrome 155，macOS）；首次遇到 2026-10-22
 - **使用者看到什麼**：打開一個新的前端網址（例如把開發版前端搬到另一個子網域）後，新增主機或登入一直失敗，像是連不上後端；同一個後端用舊網址開卻正常。
 - **原因**：後端只在 Tailscale 裡（`100.x` 位址），Chromium 把它當成區域網路。公開網站要連區域網路位址，必須先由使用者允許「區域網路存取」，而這個權限是**每個網站各自記**的：舊網址允許過，新網址要重新允許。沒允許（或詢問被略過、按過封鎖）時，請求在送出前就被擋下，主控台寫 `Permission was denied for this request to access the 'local' address space`，網頁只拿到 `Failed to fetch`，和後端關機、CORS 不符看起來一樣。
-- **怎麼偵測**：網頁察覺不到原因，只看得到請求失敗。從主機端看後端正常（`curl` 本機與 ts.net 網址都回 200、CORS 預檢正確）。
-- **怎麼處理**：在那個網址允許區域網路存取後重新整理：點網址列左邊的圖示 →「網站設定」→「區域網路存取權」改成「允許」（或 Chrome 設定 →「隱私權和安全性」→「網站設定」→「其他權限」→「區域網路存取權」）。App 不受影響。之後打算在登入頁的連線失敗訊息裡提示這一步。
-- **狀態**：只記錄
+- **怎麼偵測**：請求失敗本身看不出原因。登入頁在連線失敗（`TypeError`）時再看兩件事：瀏覽器是 Chromium（`navigator.userAgentData.brands` 有 `Chromium`），以及 `navigator.permissions.query({ name: 'local-network-access' })` 的結果；不是 `granted`、或瀏覽器不認得這個權限名稱時，就當作可能是這個原因（`web/src/views/login/loginError.ts`）。從主機端看後端正常（`curl` 本機與 ts.net 網址都回 200、CORS 預檢正確）。
+- **怎麼處理**：在那個網址允許區域網路存取後重新整理：點網址列左邊的圖示 →「網站設定」→「區域網路存取權」改成「允許」（或 Chrome 設定 →「隱私權和安全性」→「網站設定」→「其他權限」→「區域網路存取權」）。App 不受影響。登入頁與新增主機的連線失敗訊息會提示這一步（介面文字 `login.error.chromiumLocalNetworkAccess`）；權限已經允許時照舊顯示一般的連線失敗訊息。
+- **狀態**：有提示
 
 ## iOS App
 

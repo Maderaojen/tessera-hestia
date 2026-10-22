@@ -27,13 +27,11 @@ AI CLI 的工作常常一跑就是好幾分鐘，中途還會停下來等你確�
 
 > **後端不能公開到網際網路。** Hestia 後端等同這台機器的完整操作權限（能以你的身分執行任何指令）。只透過 Tailscale 或 Hestia App 的 SSH 連線使用；不要用反向代理、tunnel 服務、路由器埠轉發或改監聽位址等任何方式把後端公開到網際網路——那樣唯一的保護只剩帳號密碼。
 
-先依[發布簽章配置](docs/guides/release-signing.md)獨立核對公鑰與安裝器。新版安裝器需要已簽章版本及本機可信任公鑰；首次正式金鑰配置須由維護者完成。
-
 ```bash
-HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh /path/to/trusted-install.sh --tailscale
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh -s -- --tailscale
 ```
 
-它會從 [Releases](https://github.com/maderaojen/tessera-hestia/releases) 下載最新的後端版本包並先驗證發布簽章再驗證 SHA-256，放到 `~/.local/share/hestia/app/`，接著詢問登入帳號密碼、以 systemd 使用者服務啟動後端；需要時替你安裝 Tailscale 並印出登入網址；最後印出一個 **QR code**。手機裝好 Tailscale App 並登入同一個帳號後，在 Hestia App 的「新增主機」按「掃描 QR code」（或用相機掃），確認畫面上的主機網址後，就會新增這台主機並直接登入（一次性配對碼，3 分鐘內有效）。之後要加新手機，執行 `hestia pair`。
+它會從 [Releases](https://github.com/maderaojen/tessera-hestia/releases) 下載最新的後端版本包，先用安裝器裡的發布公鑰驗證簽章、再驗證 SHA-256（想先看過安裝器、核對公鑰指紋再執行，見[發布簽章](docs/guides/release-signing.md)），放到 `~/.local/share/hestia/app/`，接著詢問登入帳號密碼、以 systemd 使用者服務啟動後端；需要時替你安裝 Tailscale 並印出登入網址；最後印出一個 **QR code**。手機裝好 Tailscale App 並登入同一個帳號後，在 Hestia App 的「新增主機」按「掃描 QR code」（或用相機掃），確認畫面上的主機網址後，就會新增這台主機並直接登入（一次性配對碼，3 分鐘內有效）。之後要加新手機，執行 `hestia pair`。
 
 **升級**：重跑同一行指令。設定與資料都在 `~/.config/madera/hestia/`，都會保留，tmux 裡的對話不受影響。要裝指定版本，在 `sh` 前面加 `HESTIA_VERSION=vX.Y.Z`。
 

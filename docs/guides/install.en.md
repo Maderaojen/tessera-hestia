@@ -17,21 +17,27 @@ The frontend is the Hestia app (iOS/Android). It doesn't touch your computer, an
 
 ## Install
 
-### Signed release install (trusted public key required)
-
-First independently provision the release public key and trusted local installer as described in [release signing](release-signing.en.md). The new installer requires both a trusted key and a signature; maintainers must bootstrap the first signed release. Old unsigned releases are unsupported.
+### One-line install (signed releases)
 
 ```bash
-HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh /path/to/trusted-install.sh --tailscale
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh -s -- --tailscale
 ```
 
-Every argument after the trusted installer path is passed unchanged to the installer (see the options table below). This line:
+Every argument after `sh -s --` is passed unchanged to the installer (see the options table below). This line:
 
-1. Downloads the latest bundle `hestia-vX.Y.Z.tar.gz` along with `SHA256SUMS` and `SHA256SUMS.sig` from [GitHub Releases](https://github.com/maderaojen/tessera-hestia/releases), first verifies the release signature, then its SHA-256, and checks that no path or link in the bundle leads outside `hestia-vX.Y.Z/`.
+1. Downloads the latest bundle `hestia-vX.Y.Z.tar.gz` along with `SHA256SUMS` and `SHA256SUMS.sig` from [GitHub Releases](https://github.com/maderaojen/tessera-hestia/releases), first verifies the release signature with the release public key, then its SHA-256, and checks that no path or link in the bundle leads outside `hestia-vX.Y.Z/`. The release public key is written in `install.sh`; the first install saves it as `~/.local/share/hestia/release-public.pem`, and every upgrade after verifies with that file.
 2. Unpacks it into a staging folder `~/.local/share/hestia/app.new/`, carries over the current install's `.env`, and runs `npm ci --omit=dev` (the bundle is already built; nothing to build). If this step fails, the existing install is left exactly as it was.
 3. Swaps it in as `~/.local/share/hestia/app/`, then runs the bundle's `scripts/install.sh` (account and password, the user service (systemd on Linux, launchd on macOS), Tailscale, the pairing QR code). Its questions are asked on the terminal.
 
-Environment variables adjust it: `HESTIA_VERSION=vX.Y.Z` (a specific version; default: the latest) and `HESTIA_HOME` (default `~/.local/share/hestia`). For example `HESTIA_VERSION=vX.Y.Z sh /path/to/trusted-install.sh`.
+Environment variables adjust it: `HESTIA_VERSION=vX.Y.Z` (a specific version; default: the latest), `HESTIA_HOME` (default `~/.local/share/hestia`) and `HESTIA_RELEASE_PUBLIC_KEY` (a public key file of your own instead). They go to `sh`, for example `curl -fsSL … | HESTIA_VERSION=vX.Y.Z sh -s -- --tailscale`.
+
+To look at the installer before running it: download it, check the fingerprint of the public key in it ("What the one-line install trusts" in [release signing](release-signing.en.md)), then run it:
+
+```bash
+curl -fsSLO https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh
+less install.sh
+sh install.sh --tailscale
+```
 
 **Running it again upgrades**: settings and data both live in the state folder `~/.config/madera/hestia/` (the settings are its `.env`), and are kept, the service restarts, and conversations in tmux are not affected.
 
@@ -52,8 +58,8 @@ The script asks for the account, the password (not echoed) and the port, and use
 
 ```bash
 printf '%s\n' "$PASSWORD" | api/scripts/install.sh --yes --username me --password-stdin --tailscale
-# The verified local installer also accepts the environment variable:
-HESTIA_PASSWORD="$PASSWORD" sh /path/to/trusted-install.sh --yes --username me --tailscale
+# The one-line install takes the environment variable too:
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | HESTIA_PASSWORD="$PASSWORD" sh -s -- --yes --username me --tailscale
 ```
 
 | Option | Purpose |
@@ -227,7 +233,7 @@ By default the backend only listens on `127.0.0.1`; nobody on the network can re
 
 ```bash
 # One-line install: run the same line again
-HESTIA_RELEASE_PUBLIC_KEY=/path/to/trusted-release-public.pem sh /path/to/trusted-install.sh
+curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download/install.sh | sh
 # From source
 cd tessera-hestia && git pull
 api/scripts/install.sh

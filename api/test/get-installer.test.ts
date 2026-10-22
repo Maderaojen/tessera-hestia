@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash, generateKeyPairSync, sign } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, readlinkSync } from 'node:fs';
+import { createHash, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
+import { existsSync, lstatSync, readFileSync, readlinkSync, statSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,12 +9,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The one-line installer (install.sh at the repo root), run for real in sh
 // against a release served from a temp folder over file://. The bundles
 // here are stand-ins: their scripts/install.sh only records how it was
-// called, so nothing is installed and no network is used.
+// called, so nothing is installed and no network is used. The releases are
+// signed with a test key, so the script run is a copy with that key in
+// place of the one written in it (EMBEDDED_RELEASE_PUBLIC_KEY).
 const GET = path.resolve(import.meta.dirname, '..', '..', 'install.sh');
+const PEM_BLOCK = /-----BEGIN PUBLIC KEY-----\n[A-Za-z0-9+/=\n]+?-----END PUBLIC KEY-----/;
 const VERSION = 'v9.8.7';
 const NAME = `hestia-${VERSION}`;
 
 const signingPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const otherPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const pem = (pair: typeof signingPair) => (pair.publicKey.export({ type: 'spki', format: 'pem' }) as string).trim();
+let script: string;
 let trustedKey: string;
 let tmp: string;
 let mirror: string;
@@ -23,11 +29,20 @@ let home: string;
 beforeEach(async () => {
   tmp = await mkdtemp(path.join(os.tmpdir(), 'hestia-get-test-'));
   trustedKey = path.join(tmp, 'trusted-release.pem');
-  await writeFile(trustedKey, signingPair.publicKey.export({ type: 'spki', format: 'pem' }));
+  await writeFile(trustedKey, `${pem(signingPair)}\n`);
+  await embed(signingPair);
   mirror = path.join(tmp, 'mirror');
   home = path.join(tmp, 'hestia-home');
   await mkdir(path.join(mirror, VERSION), { recursive: true });
 });
+
+/** The script run from here on, with this key written in it. */
+async function embed(pair: typeof signingPair): Promise<void> {
+  const source = readFileSync(GET, 'utf8');
+  expect(source).toMatch(PEM_BLOCK);
+  script = path.join(tmp, 'install.sh');
+  await writeFile(script, source.replace(PEM_BLOCK, pem(pair)));
+}
 
 afterEach(async () => {
   await rm(tmp, { recursive: true, force: true });
@@ -61,7 +76,7 @@ async function publish(options: { extra?: (root: string) => Promise<void>; marke
 
 function get(args: string[] = [], env: Record<string, string> = {}) {
   const calls = path.join(tmp, 'calls');
-  const result = spawnSync('sh', [GET, ...args], {
+  const result = spawnSync('sh', [script, ...args], {
     env: {
       PATH: process.env.PATH ?? '', HOME: tmp, TMPDIR: tmp,
       HESTIA_RELEASE_PUBLIC_KEY: trustedKey, HESTIA_VERSION: VERSION, HESTIA_DOWNLOAD_BASE: `file://${mirror}`, HESTIA_HOME: home, CALLS: calls,
@@ -131,6 +146,58 @@ describe.skipIf(!existsSync(GET))('the one-line installer', () => {
     expect(run.calls[0]).toContain('--deps-only');
   });
 
+  describe('the release public key', () => {
+    const saved = () => path.join(home, 'release-public.pem');
+
+    it('is the one written in the script on a first install, which saves it for the upgrades after', async () => {
+      await publish();
+      const run = get([], { HESTIA_RELEASE_PUBLIC_KEY: '', HESTIA_NO_SETUP: '1' });
+      expect(run.err).toBe('');
+      expect(run.status).toBe(0);
+      expect(run.out).toContain('發布簽章驗證通過');
+      expect(readFileSync(saved(), 'utf8').trim()).toBe(pem(signingPair));
+      expect(statSync(saved()).mode & 0o777).toBe(0o644);
+      expect(statSync(home).mode & 0o022).toBe(0);
+    });
+
+    it('is the saved one once there is one, saying so when it is not the one in the script', async () => {
+      await publish();
+      await mkdir(home, { recursive: true });
+      await writeFile(saved(), `${pem(signingPair)}\n`);
+      await embed(otherPair);
+      const run = get([], { HESTIA_RELEASE_PUBLIC_KEY: '', HESTIA_NO_SETUP: '1' });
+      expect(run.status).toBe(0);
+      expect(run.out).toContain('和這個安裝器內建的不同');
+      expect(readFileSync(saved(), 'utf8').trim()).toBe(pem(signingPair));
+    });
+
+    it('is HESTIA_RELEASE_PUBLIC_KEY when given, over the saved one and the one in the script', async () => {
+      await publish();
+      await mkdir(home, { recursive: true });
+      await writeFile(saved(), `${pem(otherPair)}\n`);
+      await embed(otherPair);
+      const run = get([], { HESTIA_NO_SETUP: '1' });
+      expect(run.status).toBe(0);
+      expect(readFileSync(saved(), 'utf8').trim()).toBe(pem(otherPair));
+    });
+
+    it('a release the script’s own key can’t verify stops the install, and saves nothing', async () => {
+      await publish();
+      await embed(otherPair);
+      const run = get([], { HESTIA_RELEASE_PUBLIC_KEY: '' });
+      expect(run.status).not.toBe(0);
+      expect(run.err).toContain('發布簽章驗證失敗');
+      expect(run.calls).toEqual([]);
+      expect(existsSync(saved())).toBe(false);
+    });
+
+    it('the one in install.sh itself is a valid key with the fingerprint its comment gives', () => {
+      const source = readFileSync(GET, 'utf8');
+      const der = createPublicKey(source.match(PEM_BLOCK)![0]).export({ type: 'spki', format: 'der' });
+      expect(source).toContain(`# ${createHash('sha256').update(der).digest('hex')}\n`);
+    });
+  });
+
   describe('refuses, leaving the current install alone', () => {
     async function withCurrentInstall(): Promise<string> {
       const app = path.join(home, 'app');
@@ -167,11 +234,11 @@ describe.skipIf(!existsSync(GET))('the one-line installer', () => {
       expect(run.calls).toEqual([]);
     });
 
-    it('missing independently provisioned trust root', async () => {
+    it('a HESTIA_RELEASE_PUBLIC_KEY that is not there', async () => {
       await publish();
       const run = get([], { HESTIA_RELEASE_PUBLIC_KEY: path.join(tmp, 'missing.pem') });
       expect(run.status).not.toBe(0);
-      expect(run.err).toContain('缺少可信任');
+      expect(run.err).toContain('找不到 HESTIA_RELEASE_PUBLIC_KEY');
       expect(run.calls).toEqual([]);
     });
 
