@@ -4,7 +4,7 @@
 - 相關：[安裝說明](../guides/install.md)、[CLI 版本對齊](cli-version-alignment.md)
 - 英文版：[host-platform-caveats.en.md](host-platform-caveats.en.md)
 
-這份清單記錄後端在不同作業系統（目前是 Linux、macOS）上遇到的例外狀況，以及 App 所在平台的（目前是 iOS 的 WebKit）：使用者會看到什麼、為什麼、程式能不能察覺、該怎麼處理。遇到新的就加一筆；修好了改「狀態」，不要刪掉，以後改程式時才不會又踩回去。
+這份清單記錄後端在不同作業系統（目前是 Linux、macOS）上遇到的例外狀況，以及 App 所在平台的（目前是 iOS 的 WebKit 與 Android）：使用者會看到什麼、為什麼、程式能不能察覺、該怎麼處理。遇到新的就加一筆；修好了改「狀態」，不要刪掉，以後改程式時才不會又踩回去。
 
 每一筆的 ID 會和程式的錯誤代碼、介面文字的 key、安裝前檢查的項目共用，文件和程式才找得到彼此。
 
@@ -33,6 +33,7 @@
 | [`macos.bash32.multibyte-var`](#macosbash32multibyte-var) | macOS | 已處理 | bash 3.2 把緊接在變數後面的中文字當成變數名稱 |
 | [`macos.no-sha256sum`](#macosno-sha256sum) | macOS | 已處理 | 沒有 `sha256sum` |
 | [`ios.webkit.no-snapshot-gesture-off`](#ioswebkitno-snapshot-gesture-off) | iOS App | 已處理 | 從設定頁左緣右滑返回，看到的是白頁，不是前一頁 |
+| [`android.recents.pre13-snapshot`](#androidrecentspre13-snapshot) | Android App | 只記錄 | App 鎖定開著時，Android 12 以下的最近使用畫面仍可能拍到內容 |
 
 ## macOS
 
@@ -71,7 +72,7 @@
 - **使用者看到什麼**：升級或重裝之後，又開始跳出資料夾的詢問。
 - **原因**：隱私權是記在執行檔身上的。升級 Node.js、`nvm` 換版本或重裝，都會換成另一個 `node`，系統當成新程式重問。
 - **怎麼偵測**：程式察覺不到。
-- **怎麼處理**：用安裝腳本附的 Node.js（沒有合適的系統 Node 時會自動使用，或加 `--bundled-node`），只有主動升級它時才需要重新允許。
+- **怎麼處理**：用安裝腳本附的 Node.js（沒有合適的系統 Node 時會自動使用，或加 `--bundled-node`），只有主動升級它時才需要重新允許。安裝腳本因此不會自己換掉它：有新版時只提示，加 `--update-node` 才升級（例如有安全修補時），升級後要重新允許一次。
 - **狀態**：只記錄
 
 ### `macos.service.needs-login`
@@ -176,3 +177,14 @@
 - **怎麼偵測**：程式察覺不到（拍不拍快照沒有任何訊號），只能實機看。
 - **怎麼處理**：已處理（網頁端，沒有改原生程式）。首頁不再關掉手勢，而是和 iOS Safari 一樣在起點擋掉：左緣 24 px 內開始的觸控在 touchstart 就 `preventDefault()`，從按鈕等控制項開始的不擋（`web/src/shell/navigation/nativeBackGesture.ts`）。對話頁為了網頁自己的左緣返回仍然關著手勢（它的返回按鈕伸進左緣，擋在起點會吃掉點擊），改成離開對話頁的那一刻（換頁的 `beforeEach`）先打開，換頁結束再設回該頁要的狀態，讓 WebKit 拍得到對話頁的快照。待實機確認。
 - **狀態**：已處理
+
+## Android App
+
+### `android.recents.pre13-snapshot`
+
+- **平台**：Android 8–12（API 26–32）的 App；實作 App 鎖定時記下（2026-10-22），還沒在這些版本的實機上看過
+- **使用者看到什麼**：App 鎖定開著，在 Android 12 以下切換 App 時，最近使用畫面的縮圖可能仍拍到 App 的內容，而不是遮罩。Android 13 以上不會。
+- **原因**：只擋最近使用畫面截圖的 `Activity.setRecentsScreenshotEnabled(false)` 從 Android 13（API 33）才有。更舊的版本只能用 `FLAG_SECURE`，但一直開著會讓使用者在 App 裡也不能截圖，所以 App 只在 `onPause` 時打開、`onResume` 時關掉；部分機型在 `onPause` 之前就拍好縮圖。
+- **怎麼偵測**：程式察覺不到（縮圖什麼時候拍沒有訊號），只能實機看。
+- **怎麼處理**：盡力而為（`web/native-plugins/app-lock/android/…/AppLockPlugin.java` 的 `handleOnPause`）；沒有更好的做法，Android 13 以上不受影響。
+- **狀態**：只記錄

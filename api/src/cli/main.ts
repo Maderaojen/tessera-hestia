@@ -5,6 +5,7 @@
 //   hestia pair [--url BACKEND_URL] [--link web|app|both] [--no-wait]
 //   hestia delegate (start|stop|done|review|status) …   (see delegate.ts)
 //   hestia conversation show …                           (see conversation.ts)
+//   hestia ssh-authorize [--address HOST]… [--public-key KEY] (see sshAuthorize.ts)
 //
 // Opens a tmux for the project the directory (default: here) belongs to,
 // registered with the app so it shows up on the phone too, and attaches to
@@ -29,17 +30,21 @@
 // It talks to the API on this machine (HOST/PORT from the API's .env) with
 // the token the API writes at
 // start (see auth.ts's issueLocalToolToken).
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
+import os from 'node:os';
 import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { renderUnicodeCompact } from 'uqr';
-import { appLinkScheme, DEFAULT_FRONTEND_ORIGIN, HOST, LOCAL_TOOL_TOKEN_PATH, localApiOrigin, PORT } from '../config.js';
+import { appLinkScheme, COMMAND_NAME, DEFAULT_FRONTEND_ORIGIN, HOST, LOCAL_TOOL_TOKEN_PATH, localApiOrigin, PORT } from '../config.js';
+import { hostPlatform } from '../host-platform/index.js';
 import { attachCommand } from './attach.js';
 import { CONVERSATION_USAGE, conversationCommand } from './conversation.js';
 import { defaultTmuxName, DELEGATE_USAGE, delegateCommand, fileReader } from './delegate.js';
 import { frontendOrigin, pairBackendUrl, pairingLinks, pairLinkKinds, phoneReachHint } from './pairLink.js';
 import { projectsForDirectory } from './projectMatch.js';
+import { SSH_AUTHORIZE_USAGE, sshAuthorize, usageNamed } from './sshAuthorize.js';
+import { localAddresses, readSshdBanner } from './sshdInfo.js';
 import { currentLocale, localeFromEnv, setDefaultLocale, t } from '../i18n/index.js';
 
 // The command speaks the terminal's language (HESTIA_LOCALE, else LANG…),
@@ -56,12 +61,13 @@ const CLI_FLAGS: Record<string, string> = {
   '--agy': 'native:agy',
 };
 
-const USAGE = [
+const USAGE = usageNamed([
   'usage: hestia open [dir] [--claude|--codex|--gemini|--agy] [--project NAME] [--no-attach]',
   '       hestia pair [--url BACKEND_URL] [--link web|app|both] [--no-wait]',
   DELEGATE_USAGE.replace('usage: ', '       '),
   CONVERSATION_USAGE.replace('usage: ', '       '),
-].join('\n');
+  ...SSH_AUTHORIZE_USAGE.split('\n').map((line) => line.replace(/^(usage: | {7})/, '       ')),
+].join('\n'), COMMAND_NAME);
 
 function fail(message: string): never {
   console.error(`hestia: ${message}`);
@@ -238,9 +244,85 @@ async function open(args: string[]): Promise<void> {
   process.exit(spawnSync('tmux', command, { stdio: 'inherit', env }).status ?? 0);
 }
 
+// The machine's Tailscale status, for the addresses ssh-authorize offers; null without Tailscale.
+function tailscaleStatus(): Promise<unknown> {
+  return new Promise((resolve) => {
+    execFile('tailscale', ['status', '--json'], { timeout: 3000, maxBuffer: 4 * 1024 * 1024 }, (error, stdout) => {
+      if (error) return resolve(null);
+      try {
+        resolve(JSON.parse(stdout));
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// Ctrl-C at the y/N question: the same as Ctrl-C anywhere else in the run.
+async function confirm(question: string, signal: AbortSignal): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  rl.on('SIGINT', () => process.kill(process.pid, 'SIGINT'));
+  try {
+    return (await rl.question(question, { signal })).trim().toLowerCase() === 'y';
+  } catch {
+    process.stdout.write('\n');
+    return false;
+  } finally {
+    rl.close();
+  }
+}
+
+async function sshAuthorizeCommand(args: string[]): Promise<void> {
+  const user = os.userInfo();
+  const files = { sshDir: path.join(user.homedir, '.ssh'), uid: user.uid };
+  let token: string | null = null;
+  const outcome = await sshAuthorize(args, {
+    uid: process.getuid?.() ?? user.uid,
+    username: user.username,
+    home: user.homedir,
+    files,
+    hestiaPort: PORT,
+    commandName: COMMAND_NAME,
+    scheme: appLinkScheme(process.env),
+    remoteLoginSetting: hostPlatform().sshd.remoteLoginSetting,
+    sshdConfigPath: '/etc/ssh/sshd_config',
+    hostKeyDir: '/etc/ssh',
+    now: () => new Date(),
+    out: (line) => console.log(line),
+    interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+    confirm,
+    banner: (port) => readSshdBanner(port),
+    tailscaleStatus,
+    localAddresses: () => localAddresses(),
+    issuePairingCode: async () => {
+      token = (await readFile(LOCAL_TOOL_TOKEN_PATH, 'utf8').catch(() => '')).trim() || null;
+      if (!token) return null;
+      const res = await fetch(`${API_ORIGIN}/api/auth/pairing-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Hestia-Token': token, 'Accept-Language': currentLocale() },
+      }).catch(() => null);
+      if (!res?.ok) return null;
+      return ((await res.json()) as { code?: string }).code ?? null;
+    },
+    onInterrupt: (cleanup) => {
+      const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+      for (const signal of signals) process.on(signal, cleanup);
+      return () => { for (const signal of signals) process.off(signal, cleanup); };
+    },
+  });
+  // Then like `hestia pair`: who used the code, and the chance to take it back.
+  if (outcome.pairingCode && token && process.stdout.isTTY) {
+    console.log('');
+    await waitForPairing(token, outcome.pairingCode);
+  }
+  process.exit(outcome.exitCode);
+}
+
 const [command, ...rest] = process.argv.slice(2);
-if (command === 'open') await open(rest);
+if (command === '--help' || command === '-h' || command === 'help') console.log(USAGE);
+else if (command === 'open') await open(rest);
 else if (command === 'pair') await pair(rest);
+else if (command === 'ssh-authorize') await sshAuthorizeCommand(rest);
 else if (command === 'delegate') {
   const token = await localToolToken();
   await delegateCommand(rest, {

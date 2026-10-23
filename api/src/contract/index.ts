@@ -21,6 +21,7 @@ export * from './recap.js';
 export * from './repo.js';
 export * from './runtimes.js';
 export * from './session-files.js';
+export * from './sshAuthorize.js';
 export * from './sessions.js';
 export * from './spawnTitle.js';
 export * from './tags.js';

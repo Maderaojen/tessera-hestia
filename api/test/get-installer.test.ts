@@ -105,6 +105,16 @@ describe.skipIf(!existsSync(GET))('the one-line installer', () => {
     expect(existsSync(path.join(home, 'app.old'))).toBe(false);
   });
 
+  it('passes --update-node to the step that picks the node, as well as to the bundle’s installer', async () => {
+    await publish();
+    const run = get(['--bundled-node', '--update-node']);
+    expect(run.status).toBe(0);
+    expect(run.calls).toEqual([
+      `${home}/app.new|--deps-only --bundled-node --update-node`,
+      `${path.join(home, 'app')}|--skip-build --bundled-node --update-node`,
+    ]);
+  });
+
   it('an upgrade keeps the install’s .env and .node-bin', async () => {
     await publish();
     const app = path.join(home, 'app');

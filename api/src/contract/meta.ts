@@ -128,6 +128,17 @@ export type LaunchOptionCatalog = {
   janus: { available: boolean; error: null | { code: string; message: string } };
 };
 
+/**
+ * GET /health, which needs no login: the backend is up — and which install
+ * it is, by its command's name (`hestia`, `hestia-dev`), so the app can list
+ * the installs an SSH server reaches before signing in to any. `name` is absent from a backend older
+ * than that; a client names such a one by its port.
+ */
+export type ApiHealth = {
+  ok: true;
+  name?: string;
+};
+
 /** GET /meta: who this backend is and what it can do. */
 export type ApiMeta = {
   // The backend's own version (its package version).

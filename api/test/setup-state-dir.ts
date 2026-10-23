@@ -17,7 +17,7 @@ const fallbackStateDir = mkdtempSync(path.join(os.tmpdir(), 'hestia-test-state-'
 // started by the API service), and a `||=` below would then keep them —
 // tests ran against the live install that way, and uploads.test.ts deleted
 // its real uploads/. A file that needs its own value sets it itself.
-for (const key of ['HESTIA_STATE_DIR', 'HESTIA_DIALOGUE_ROOT', 'HESTIA_SESSION_PREFIX', 'HESTIA_USER_BIN_DIR', 'HESTIA_ARCHITECTURE_DIR']) {
+for (const key of ['HESTIA_STATE_DIR', 'HESTIA_DIALOGUE_ROOT', 'HESTIA_SESSION_PREFIX', 'HESTIA_USER_BIN_DIR', 'HESTIA_ARCHITECTURE_DIR', 'HESTIA_COMMAND_NAME', 'HESTIA_TMUX_SOCKET', 'HESTIA_WORKTREES_DIR', 'HESTIA_PUBLIC_URL']) {
   delete process.env[key];
 }
 

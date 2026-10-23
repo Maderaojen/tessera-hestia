@@ -78,6 +78,7 @@ curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download
 | `--no-service` | 不裝使用者服務（systemd／launchd），只建置與設定 |
 | `--no-linger` | Linux：不開啟 linger（見下方）；預設會問，`--yes` 時直接開啟。macOS 沒有 linger，這個參數沒有作用（見「macOS」） |
 | `--bundled-node` | 即使系統的 node 夠新，也用自己下載的那份 |
+| `--update-node` | 把自己下載的那份升級到同一個大版本的最新版（例如有安全修補時）。不加時只提示有新版，不會自己換：macOS 換了 node 會重新詢問資料夾權限 |
 | `--skip-build` | 跳過 `npm ci` / `npm run build`（一行安裝已經先裝好相依套件，會自動加上） |
 | `--deps-only` | 只選好 Node.js 並安裝相依套件（原始碼會建置），不寫設定、不裝服務；一行安裝用它在暫存資料夾準備新版本 |
 | `--status` | 只顯示目前安裝的狀況（服務、API、帳號、Tailscale 網址）與配對連結，不做任何變更 |
@@ -96,7 +97,7 @@ curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download
 | `~/.config/madera/hestia/.env`（權限 600；`api/.env` 是連到它的連結，讀寫都經過這個連結） | `AUTH_USERNAME`、`AUTH_PASSWORD_HASH`、`PORT`、`HOST`（一律是 `127.0.0.1`，見「安全須知」）、`CORS_ALLOWED_ORIGINS`（沒給 `--cors-origins` 時留白，代表用後端的預設值）、`HESTIA_STATE_DIR`、`HESTIA_SESSION_PREFIX`、`HESTIA_ENV_VERSION`（寫這份 `.env` 的安裝腳本版本，升級時判斷要不要搬移舊設定）、`HESTIA_NODE_BIN`（這次選用的 node 路徑，讓 `hestia` 指令和服務跑同一個 node；舊版另存在 `api/.node-bin`，重跑安裝時會移除）。服務用 `--env-file` 載入它，設定不見時服務會啟動失敗，不會以沒有帳號的狀態跑起來 |
 | `~/.config/systemd/user/hestia-api.service` | Linux 的使用者服務：`Restart=on-failure`，`KillMode=process`（重啟 API 不會關掉 tmux 裡的對話） |
 | `~/Library/LaunchAgents/me.maderaojen.hestia-api.plist`、`~/Library/Logs/Hestia/hestia-api.log` | macOS 的使用者服務（LaunchAgent）與它的紀錄：`RunAtLoad`、失敗時重啟（`KeepAlive`）、`AbandonProcessGroup`（停掉或重啟 API 不會關掉 tmux 裡的對話） |
-| `~/.local/share/hestia/node/`（設了 `HESTIA_HOME` 時是它底下的 `node/`） | 只在系統 node 不夠新、沒有 npm（或 `--bundled-node`）時：下載的 Node.js，`current` 指向使用中的版本 |
+| `~/.local/share/hestia/node/`（設了 `HESTIA_HOME` 時是它底下的 `node/`） | 只在系統 node 不夠新、沒有 npm（或 `--bundled-node`）時：下載的 Node.js，`current` 指向使用中的版本。`--update-node` 升級後舊版本留在旁邊，要退回就把 `current` 指回去 |
 | `api/.env` 的 `HESTIA_PUBLIC_URL` | 用 `--tailscale` 時：這個後端在 tailnet 上的網址，`hestia pair` 用它產生配對連結 |
 | `~/.local/bin/hestia` | 指向 `api/bin/hestia` 的連結，在終端機開一個手機也看得到的 tmux。已經指向另一份安裝時會先問，`--yes` 時保留原本的 |
 | `~/.local/bin/tailscale`、`tailscaled`、`~/.config/systemd/user/tailscaled.service`、`~/.local/share/tailscale/` | 只在 Linux、`--tailscale` 且機器上沒有可用的 Tailscale 時：官方執行檔、以使用者身分執行的服務、它的狀態（macOS 不會裝這些，用 Tailscale App） |
@@ -182,6 +183,21 @@ Hestia App（iOS、Android）也可以經由 SSH 連到後端：App 在手機上
 - sshd 允許 TCP 轉送：`/etc/ssh/sshd_config` 的 `AllowTcpForwarding` 不是 `no`（預設是 `yes`），也沒有 `DisableForwarding yes`。被擋的話 App 會顯示「這台主機不允許 SSH 轉送」。
 - 後端維持預設，只聽 `127.0.0.1`（照上面安裝的就是）。後端改過埠的話，在 App 新增主機時的「進階」改遠端 API 的埠。
 - iOS 版的限制：sshd 要有 ed25519 或 ECDSA 的主機金鑰，只有 RSA 主機金鑰的伺服器連不上（一般 Linux、macOS 的 sshd 預設就有 ed25519）；匯入有密碼的私鑰時，只讀得了以 aes128／192／256-ctr 加密的（`ssh-keygen` 的預設），其他加密方式會顯示不支援。
+
+最快的方式是在這台機器的終端機執行（安裝時用 `--command-name` 取了別的指令名稱的，就用那個名稱）：
+
+```bash
+hestia ssh-authorize
+```
+
+它會顯示一個 QR code。在 App 按「新增主機 › SSH › 掃描 hestia ssh-authorize」掃描（沒有相機的話貼上它印出的連結），核對 App 顯示的位址，按「授權」；終端機會顯示 App 送來的金鑰指紋，和 App 上的相同才按 `y`。完成後這把金鑰的限制版那一行（只允許連到這套 Hestia 的埠）已經加進 `~/.ssh/authorized_keys`，App 也直接登入了，不用手動貼公鑰、確認主機指紋或輸入密碼。
+
+- 它怎麼做：指令先在 `authorized_keys` 加一行只能轉送到指令自己的本機埠、幾分鐘後過期（`expiry-time`）的一次性金鑰，放進 QR code；App 用它連進來送出自己的公鑰，你在終端機按 `y` 之後才寫入正式的那一行，一次性的那一行在結束時（包括逾時、Ctrl-C、出錯）一定移除。所以 QR code 等同「可以送一把公鑰來」的憑證：看得到它的人也能送金鑰，擋住他們的是你核對指紋這一步，指令沒有略過確認的選項。QR code 預設 3 分鐘內有效（`--timeout` 秒數可改）。
+- `authorized_keys` 其他內容一行都不會動。同一把金鑰已經有 Hestia 寫的那一行時只補上這個埠；已經有沒限制的、或帶著其他選項的同一把金鑰時不改，只印出建議的那一行。檔案或 `~/.ssh` 是符號連結、不屬於你、或群組／其他人可以寫入時會停下，印出要執行的 `chmod`，不會替你改權限。
+- 需要：OpenSSH 7.7 以上的 sshd 在執行（macOS 要開「系統設定 › 一般 › 共享 › 遠端登入」）、sshd 讀的是 `~/.ssh/authorized_keys`（`AuthorizedKeysFile` 是預設值）、不要用 root 執行。找不到手機連得到的位址時用 `--address` 指定（可以給多個），sshd 不在 22 埠時用 `--ssh-port`。
+- 沒有相機、也不方便貼連結時：`hestia ssh-authorize --public-key 'ssh-ed25519 AAAA… 名稱'` 用同樣的規則寫入你貼上的公鑰（之後照下面的步驟 2–4 新增主機）。
+
+也可以照下面的步驟手動設定。
 
 步驟：
 

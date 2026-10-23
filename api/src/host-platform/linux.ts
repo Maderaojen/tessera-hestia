@@ -26,6 +26,7 @@ export function createLinuxPlatform(deps: { fs?: ProcFs; run?: CommandRunner; wa
     inspector: procInspector(fs),
     tmuxServer: systemdScopeLauncher(run, warn),
     service: { restartCommand: () => 'systemctl --user restart hestia-api.service' },
+    sshd: { remoteLoginSetting: false },
   };
 }
 

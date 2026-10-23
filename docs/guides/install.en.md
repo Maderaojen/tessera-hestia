@@ -78,6 +78,7 @@ curl -fsSL https://github.com/maderaojen/tessera-hestia/releases/latest/download
 | `--no-service` | Don't install the user service (systemd / launchd); only build and configure |
 | `--no-linger` | Linux: don't enable linger (see below); by default the script asks, and with `--yes` it enables it. macOS has no linger, so this does nothing there (see "macOS") |
 | `--bundled-node` | Use the downloaded Node.js even when the system's node is new enough |
+| `--update-node` | Update the downloaded Node.js to the newest release of its major version (for example when it has security fixes). Without it a newer release is only mentioned, never switched to by itself: on macOS a new node is asked about folder access again |
 | `--skip-build` | Skip `npm ci` / `npm run build` (the one-line install has already installed the dependencies and adds this itself) |
 | `--deps-only` | Only pick Node.js and install the dependencies (building from source), writing no settings and installing no service; the one-line install uses it to prepare a new version in the staging folder |
 | `--status` | Only show the current install's state (service, API, account, Tailscale address) and the pairing link, changing nothing |
@@ -96,7 +97,7 @@ The password never appears on a command line or in a file: only its scrypt hash 
 | `~/.config/madera/hestia/.env` (mode 600; `api/.env` is a link to it, and everything reads and writes through that link) | `AUTH_USERNAME`, `AUTH_PASSWORD_HASH`, `PORT`, `HOST` (always `127.0.0.1`; see "Security"), `CORS_ALLOWED_ORIGINS` (left blank without `--cors-origins`, meaning the backend's defaults), `HESTIA_STATE_DIR`, `HESTIA_SESSION_PREFIX`, `HESTIA_ENV_VERSION` (the version of the installer that wrote this `.env`, used on upgrade to decide whether old settings need migrating), `HESTIA_NODE_BIN` (the path of the node chosen this time, so the `hestia` command runs the same node as the service; older versions kept it in `api/.node-bin`, which running the installer again removes). The service loads it with `--env-file`, so if the settings go missing the service fails to start rather than running with no account |
 | `~/.config/systemd/user/hestia-api.service` | The Linux user service: `Restart=on-failure`, `KillMode=process` (restarting the API doesn't end the conversations in tmux) |
 | `~/Library/LaunchAgents/me.maderaojen.hestia-api.plist`, `~/Library/Logs/Hestia/hestia-api.log` | The macOS user service (a LaunchAgent) and its log: `RunAtLoad`, restarted on failure (`KeepAlive`), `AbandonProcessGroup` (stopping or restarting the API doesn't end the conversations in tmux) |
-| `~/.local/share/hestia/node/` (`node/` under `HESTIA_HOME` when that is set) | Only when the system's node is too old or has no npm (or with `--bundled-node`): the downloaded Node.js, with `current` pointing at the version in use |
+| `~/.local/share/hestia/node/` (`node/` under `HESTIA_HOME` when that is set) | Only when the system's node is too old or has no npm (or with `--bundled-node`): the downloaded Node.js, with `current` pointing at the version in use. After `--update-node` the old version stays beside it; point `current` back at it to go back |
 | `HESTIA_PUBLIC_URL` in `api/.env` | With `--tailscale`: this backend's address on the tailnet, which `hestia pair` uses to build the pairing link |
 | `~/.local/bin/hestia` | A link to `api/bin/hestia`, which opens a tmux in your terminal that the phone sees too. If it already points at another install, the script asks first; with `--yes` it keeps the existing one |
 | `~/.local/bin/tailscale`, `tailscaled`, `~/.config/systemd/user/tailscaled.service`, `~/.local/share/tailscale/` | Only on Linux, with `--tailscale`, when the machine has no usable Tailscale: the official binaries, a service running as your user, and its state (never on macOS, which uses the Tailscale app) |
@@ -181,6 +182,21 @@ You need:
 - sshd allowing TCP forwarding: `AllowTcpForwarding` in `/etc/ssh/sshd_config` isn't `no` (the default is `yes`), and there is no `DisableForwarding yes`. If it is blocked, the app says the host doesn't allow SSH forwarding.
 - The backend as installed, listening on `127.0.0.1` only. If you changed its port, change the remote API port under "Advanced" when adding the host in the app.
 - Limits of the iOS app: sshd needs an ed25519 or ECDSA host key, and a server with only an RSA host key can't be reached (a stock Linux or macOS sshd has an ed25519 one by default); when importing a passphrase-protected private key, only one encrypted with aes128/192/256-ctr (the `ssh-keygen` default) can be read, and any other is reported as unsupported.
+
+The quickest way is to run this in a terminal on this machine (if you installed with another command name through `--command-name`, use that name):
+
+```bash
+hestia ssh-authorize
+```
+
+It shows a QR code. In the app, tap "Add host › SSH › Scan hestia ssh-authorize" and scan it (without a camera, paste the link it prints), check the address the app shows and tap "Authorize"; the terminal then shows the fingerprint of the key the app sent: type `y` only if it matches the one in the app. When it's done, the restricted line for that key (allowed to reach this Hestia's port only) is in `~/.ssh/authorized_keys` and the app is logged in, with no public key to paste, host fingerprint to check or password to type.
+
+- How it works: the command first adds a one-time key to `authorized_keys` that can only forward to the command's own local port and expires after a few minutes (`expiry-time`), and puts it in the QR code; the app connects with it and sends its own public key, the real line is written only after you type `y`, and the one-time line is always removed when it ends (timeout, Ctrl-C and errors included). So the QR code is as good as "may send one public key": someone who can see it can send a key too, and what stops them is you comparing the fingerprint; the command has no option to skip that. The QR code works for 3 minutes by default (`--timeout` in seconds changes it).
+- Nothing else in `authorized_keys` changes, not a single line. If the key already has the line Hestia writes, only this port is added to it; if the key is already there without restrictions, or with other options, it's left alone and the suggested line is printed. If the file or `~/.ssh` is a symbolic link, isn't yours, or can be written by group or others, it stops and prints the `chmod` to run; it never changes permissions for you.
+- Needs: sshd from OpenSSH 7.7 or later running (on macOS, turn on "System Settings › General › Sharing › Remote Login"), sshd reading `~/.ssh/authorized_keys` (`AuthorizedKeysFile` as by default), and not running it as root. If it can't find an address the phone can reach, give one or more with `--address`; if sshd isn't on port 22, use `--ssh-port`.
+- Without a camera, or when pasting the link is awkward: `hestia ssh-authorize --public-key 'ssh-ed25519 AAAA… name'` writes the public key you paste by the same rules (then add the host with steps 2–4 below).
+
+You can also set it up by hand with the steps below.
 
 Steps:
 

@@ -22,5 +22,6 @@ export function createUnsupportedPlatform(deps: { run?: CommandRunner } = {}): H
     inspector: { inspect: async () => ({ status: 'unavailable' }) },
     tmuxServer: { detached: async () => null },
     service: { restartCommand: () => null },
+    sshd: { remoteLoginSetting: false },
   };
 }

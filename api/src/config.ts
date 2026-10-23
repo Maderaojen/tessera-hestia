@@ -162,9 +162,9 @@ export const SESSION_PREFIX = HOST_PATHS.sessionPrefix;
 // The tmux server (`tmux -L <name>`) this install opens its sessions on:
 // its own, not the user's default one, so a `tmux kill-server` typed in
 // any ordinary terminal (or by a CLI working in one) can't end them, and
-// two installs on one machine (dev and stable) never share a server. By
+// two installs on one machine (production and dev) never share a server. By
 // default the session prefix without its trailing dash (`hestia`,
-// `hestia-stable`). Sessions opened before this keep the server they were
+// `hestia-dev`). Sessions opened before this keep the server they were
 // opened on (ManagedSession.tmuxSocket).
 export const TMUX_SOCKET = process.env.HESTIA_TMUX_SOCKET?.trim() || SESSION_PREFIX.replace(/-+$/, '') || 'hestia';
 export const USER_BIN_DIR = HOST_PATHS.userBinDir;

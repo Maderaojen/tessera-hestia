@@ -74,12 +74,19 @@ export type ServiceManager = {
   restartCommand(): string | null;
 };
 
+/** This machine's sshd, for what `hestia ssh-authorize` tells the user when it doesn't answer. */
+export type SshdInfo = {
+  /** Whether sshd being off is a setting the user turns on (macOS: Remote Login). */
+  remoteLoginSetting: boolean;
+};
+
 export type HostPlatform = {
   readonly id: HostPlatformId;
   readonly processes: ProcessTable;
   readonly inspector: ProcessInspector;
   readonly tmuxServer: TmuxServerLauncher;
   readonly service: ServiceManager;
+  readonly sshd: SshdInfo;
 };
 
 /** Runs a program and resolves to its stdout; rejects on a non-zero exit. */

@@ -2,7 +2,8 @@ import { createTranscriptRetentionRouter } from './routes/transcript-retention.j
 import { turnProcessRouter } from './routes/turn-process.js';
 import express, { Router, type Express, type NextFunction, type Request, type Response } from 'express';
 import { accountForRequest, isLocalRequest, mediaTokenAccount, authenticateStreamRequest } from './auth.js';
-import { APP_WEBVIEW_ORIGINS, DEFAULT_CORS_ALLOWED_ORIGINS } from './config.js';
+import { APP_WEBVIEW_ORIGINS, COMMAND_NAME, DEFAULT_CORS_ALLOWED_ORIGINS } from './config.js';
+import type { ApiHealth } from './contract/meta.js';
 import { createUsageAnalyticsRouter } from './usage-analytics/router.js';
 import { accountStatusRouter } from './routes/account-status.js';
 import { continuityDefaultsRouter, sessionContinuityRouter } from './routes/continuity.js';
@@ -184,8 +185,10 @@ export function createApp({ modules = [] }: AppOptions = {}): Express {
   const apiRouter = Router();
 
   // Unprotected: a health probe needs to work before anyone's logged in,
-  // and /auth/* obviously can't require the very session it's issuing.
-  apiRouter.get('/health', (_req, res) => res.json({ ok: true }));
+  // and /auth/* obviously can't require the very session it's issuing. Its
+  // command name tells the app which install a port is (contract/meta.ts);
+  // not a secret — whoever reaches this path reaches the backend anyway.
+  apiRouter.get('/health', (_req, res) => res.json({ ok: true, name: COMMAND_NAME } satisfies ApiHealth));
   apiRouter.use('/auth', authRouter);
 
   // Everything below this line requires a valid session — this is the

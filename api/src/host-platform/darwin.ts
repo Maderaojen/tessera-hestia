@@ -31,6 +31,8 @@ export function createDarwinPlatform(deps: { run?: CommandRunner } = {}): HostPl
     tmuxServer: noDetachNeeded,
     // install.sh's LaunchAgent: me.maderaojen.<service name>, in the GUI domain.
     service: { restartCommand: () => `launchctl kickstart -k gui/${process.getuid?.() ?? '$(id -u)'}/me.maderaojen.hestia-api` },
+    // sshd is off until System Settings › Sharing › Remote Login is on.
+    sshd: { remoteLoginSetting: true },
   };
 }
 

@@ -19,6 +19,7 @@ import * as registry from './registry.js';
 import { scrubServerSecretEnv, useSessionSockets } from './tmux.js';
 import { forgetSpawnWorktreePaths } from './spawn/roots.js';
 import { spawnClosable } from './services/spawn-closable.js';
+import { startLoginPathRefresh } from './login-path.js';
 
 // First, before anything else: never listen where another machine could
 // reach the API directly (see config.ts HOST).
@@ -43,6 +44,8 @@ console.log(`hestia tmux server: -L ${TMUX_SOCKET}`);
 useSessionSockets(registry.tmuxSocketFor);
 await Promise.all([scrubServerSecretEnv(), scrubProbeServerSecretEnv()]);
 await issueLocalToolToken(LOCAL_TOOL_TOKEN_PATH);
+// The probes' PATH also gets the login shell's (login-path.ts), read in the background.
+startLoginPathRefresh();
 // Before listening: a request must never be answered from an empty token
 // map (a logged-in phone would be told to log in again), and the file must
 // be read before anything writes it.

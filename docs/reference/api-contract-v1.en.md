@@ -20,7 +20,7 @@ An optional module (`api/modules/*`, see [the architecture](architecture.en.md))
 | `projects.ts` | The inbox id (the app names the inbox in its own language by the id), project / note DTOs, the create-note request |
 | `attachments.ts` | Attachments, the upload response, attachment ranges within a message |
 | `errors.ts` | Error codes and the shape of an error response |
-| `meta.ts` | The contract version, API capability names, the shape of `GET /api/meta`, launch options |
+| `meta.ts` | The contract version, API capability names, the shapes of `GET /api/health` and `GET /api/meta`, launch options |
 | `tags.ts` | Note tag parsing rules (formerly one copy each in frontend and backend) |
 | `pairing.ts` | The format of `hestia pair`'s pairing links (the web link and the app deep link), and parsing them |
 | `repo.ts` | A project's files and git, read-only: each project path's git state, uncommitted files, unpushed commits, diffs, commit details, the file tree and file contents, the local branches' history |
@@ -29,6 +29,10 @@ An optional module (`api/modules/*`, see [the architecture](architecture.en.md))
 
 - On the API side, `toSessionDto`, `toPublicManagedSession` and `toPublicConversation` all return the contract's types, so any mismatch in fields fails to compile.
 - The frontend's `api.ts` keeps names such as `ManagedSession`, `Turn` and `NoteRecord`, but their types all come from the contract.
+
+## `GET /api/health`
+
+Needs no login. Answers `{ "ok": true, "name": "hestia" }`: `name` is this install's command name (`install.sh --command-name`, e.g. `hestia` for production and `hestia-dev` for dev), so the app can list the Hestia installs an SSH server reaches before signing in to any of them. The command name isn't a secret: whoever reaches this path reaches the backend anyway. A backend older than the field answers just `{ "ok": true }`, and the app calls it by its port ("Hestia (port 4791)").
 
 ## `GET /api/meta`
 

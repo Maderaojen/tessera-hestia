@@ -189,12 +189,13 @@ for kept in .env .node-bin; do
 done
 
 # Runtime dependencies, in the staging folder: a failure here leaves the
-# current install as it was. Only --bundled-node matters for this step.
+# current install as it was. Only the Node.js options matter for this step
+# (it is the one that picks, and downloads, the node).
 deps_opts=""
 for arg in "$@"; do
-  if [ "$arg" = --bundled-node ]; then deps_opts="--bundled-node"; fi
+  case "$arg" in --bundled-node|--update-node) deps_opts="$deps_opts $arg" ;; esac
 done
-# shellcheck disable=SC2086 # deps_opts is one word or none
+# shellcheck disable=SC2086 # deps_opts is a few words or none
 bash "$STAGING/scripts/install.sh" --deps-only $deps_opts </dev/null \
   || die "安裝相依套件失敗；原本的安裝沒有變動（新版本留在 ${STAGING}）"
 

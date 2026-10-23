@@ -110,7 +110,7 @@ INTERACTIVE=1
 [ -t 0 ] || INTERACTIVE=0
 OPT_USERNAME="" OPT_PORT="" OPT_CORS="" OPT_STATE_DIR="" OPT_SESSION_PREFIX="" OPT_SERVICE_NAME="" OPT_COMMAND_NAME=""
 TS_HTTPS_PORT=443
-PASSWORD_STDIN=0 TAILSCALE=0 SERVICE=1 BUILD=1 DEPS_ONLY=0 UNINSTALL=0 PURGE=0 BUNDLED_NODE=0 STATUS=0 LINGER=1
+PASSWORD_STDIN=0 TAILSCALE=0 SERVICE=1 BUILD=1 DEPS_ONLY=0 UNINSTALL=0 PURGE=0 BUNDLED_NODE=0 UPDATE_NODE=0 STATUS=0 LINGER=1
 
 need_arg() { [ $# -ge 2 ] && [ -n "$2" ] || die "$(msg install.option.needsValue option "$1")"; }
 while [ $# -gt 0 ]; do
@@ -131,6 +131,7 @@ while [ $# -gt 0 ]; do
     --no-service) SERVICE=0 ;;
     --no-linger) LINGER=0 ;;
     --bundled-node) BUNDLED_NODE=1 ;;
+    --update-node) UPDATE_NODE=1 ;;
     --skip-build) BUILD=0 ;;
     --deps-only) DEPS_ONLY=1 ;;
     --uninstall) UNINSTALL=1 ;;
@@ -732,21 +733,30 @@ node_ok() {
 # the official build for this platform (Linux, macOS) of the newest release
 # of the major version the engines field asks for, checked against
 # nodejs.org's SHASUMS256.txt. The system's node, if any, is left alone.
+# The newest release of the major version engines.node asks for, e.g. v22.23.4.
+latest_node_version() {
+  have curl || die "$(msg install.node.noCurl)"
+  local major version
+  major="$(sed -n 's/.*"node": *">= *\([0-9]*\).*/\1/p' "$API_DIR/package.json" | head -n 1)"
+  [ -n "$major" ] || die "$(msg install.node.noEngines)"
+  # index.json lists the newest release first.
+  version="$(curl -fsSL --max-time 30 https://nodejs.org/dist/index.json | grep -oE "\"version\":\"v$major\\.[0-9]+\\.[0-9]+\"" | head -n 1 | cut -d '"' -f 4 || true)"
+  [ -n "$version" ] || die "$(msg install.node.noVersion major "$major")"
+  printf '%s\n' "$version"
+}
+
+# Downloads that release into NODE_HOME and points current at it. The
+# version it replaces stays beside it, to point current back at if needed.
 download_node() {
   have curl || die "$(msg install.node.noCurl)"
   platform_sha256_available || die "$(msg install.node.noSha256sum)"
-  local major version arch file tmp
-  major="$(sed -n 's/.*"node": *">= *\([0-9]*\).*/\1/p' "$API_DIR/package.json" | head -n 1)"
-  [ -n "$major" ] || die "$(msg install.node.noEngines)"
+  local version="$1" arch file tmp
   case "$(uname -m)" in
     x86_64|amd64) arch=x64 ;;
     aarch64|arm64) arch=arm64 ;;
     armv7l) arch=armv7l ;;
-    *) die "$(msg install.node.unsupportedCpu arch "$(uname -m)" major "$major")" ;;
+    *) die "$(msg install.node.unsupportedCpu arch "$(uname -m)" major "$(printf '%s' "${version#v}" | cut -d . -f 1)")" ;;
   esac
-  # index.json lists the newest release first.
-  version="$(curl -fsSL https://nodejs.org/dist/index.json | grep -oE "\"version\":\"v$major\\.[0-9]+\\.[0-9]+\"" | head -n 1 | cut -d '"' -f 4 || true)"
-  [ -n "$version" ] || die "$(msg install.node.noVersion major "$major")"
   file="node-$version-$(platform_node_os)-$arch.tar.gz"
   tmp="$(mktemp -d)"
   note "$(msg install.node.downloading version "$version")"
@@ -769,6 +779,7 @@ download_node() {
 # when needed. Some distributions package npm apart from node.
 if [ "$BUNDLED_NODE" = 0 ] && have node && node_ok "$(command -v node)" && have npm; then
   NODE_BIN="$(command -v node)"
+  [ "$UPDATE_NODE" = 0 ] || note "$(msg install.node.updateIgnored node "$NODE_BIN")"
 else
   if [ "$BUNDLED_NODE" = 0 ]; then
     if have node && node_ok "$(command -v node)"; then
@@ -779,8 +790,29 @@ else
       note "$(msg install.node.missing)"
     fi
   fi
+  # The downloaded node is kept until asked to update (--update-node): on
+  # macOS, folder permissions belong to the node binary, so a new one is
+  # asked about again (macos.tcc.new-node-asks-again in
+  # docs/reference/host-platform-caveats.md). A newer release is only
+  # mentioned, and not being able to look it up is no reason to stop.
   if ! { [ -x "$NODE_HOME/current/bin/node" ] && node_ok "$NODE_HOME/current/bin/node"; }; then
-    download_node
+    download_node "$(latest_node_version)"
+  else
+    node_have="$("$NODE_HOME/current/bin/node" --version)"
+    if [ "$UPDATE_NODE" = 1 ]; then
+      node_latest="$(latest_node_version)"
+      if [ "$node_latest" = "$node_have" ]; then
+        ok "$(msg install.node.upToDate version "$node_have")"
+      else
+        note "$(msg install.node.updating version "$node_have" latest "$node_latest")"
+        download_node "$node_latest"
+      fi
+    else
+      node_latest="$(latest_node_version 2>/dev/null || true)"
+      if [ -n "$node_latest" ] && [ "$node_latest" != "$node_have" ]; then
+        note "$(msg install.node.updateAvailable version "$node_have" latest "$node_latest")"
+      fi
+    fi
   fi
   NODE_BIN="$NODE_HOME/current/bin/node"
   node_ok "$NODE_BIN" || die "$(msg install.node.notEngines node "$NODE_BIN")"

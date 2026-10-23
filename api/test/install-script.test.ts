@@ -627,3 +627,34 @@ describe('install.sh on macOS (platform-darwin.sh)', () => {
     expect(() => platformShell('darwin', `cd "$HOME"; printf '%s  f\\n' '${'0'.repeat(64)}' | platform_sha256_check 2>/dev/null`)).toThrow();
   });
 });
+
+// The bundled node is only updated when asked (--update-node); which release
+// that is comes from nodejs.org's index, stood in for by a fake curl.
+describe('install.sh latest_node_version', () => {
+  async function latest(index: string): Promise<{ status: number; out: string }> {
+    const bin = path.join(home, 'bin');
+    await mkdir(bin, { recursive: true });
+    await writeFile(path.join(bin, 'curl'), `#!/bin/sh\nprintf '%s' '${index}'\n`);
+    await chmod(path.join(bin, 'curl'), 0o755);
+    const functions = 'eval "$(sed -n \'/^have() {/p;/^die() {/p;/^latest_node_version() {/,/^}/p\' "$SCRIPT")"';
+    const script = `set -euo pipefail\n${MESSAGES}${functions}\nlatest_node_version`;
+    try {
+      const out = execFileSync('bash', ['-c', script], { env: { PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home, SCRIPT, API_DIR }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      return { status: 0, out };
+    } catch (e) {
+      return { status: (e as { status: number }).status, out: '' };
+    }
+  }
+
+  it('picks the newest release of the major version engines.node asks for', async () => {
+    const major = JSON.parse(readFileSync(path.join(API_DIR, 'package.json'), 'utf8')).engines.node.replace(/[^0-9.]/g, '').split('.')[0];
+    const index = JSON.stringify([
+      { version: 'v99.1.0' }, { version: `v${major}.40.2` }, { version: `v${major}.40.1` }, { version: `v${major}.9.0` },
+    ]).replaceAll("'", '');
+    expect(await latest(index)).toEqual({ status: 0, out: `v${major}.40.2\n` });
+  });
+
+  it('fails when the index has no release of that major version', async () => {
+    expect((await latest('[{"version":"v99.1.0"}]')).status).not.toBe(0);
+  });
+});

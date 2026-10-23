@@ -20,7 +20,7 @@
 | `projects.ts` | 收件匣的 id（名稱由 App 依 id 用自己的語言顯示）、project／note DTO、建立 note 的請求 |
 | `attachments.ts` | 附件、上傳回應、訊息裡的附件範圍 |
 | `errors.ts` | 錯誤碼與錯誤回應的形狀 |
-| `meta.ts` | 契約版本、API 功能名稱、`GET /api/meta` 的形狀、啟動選項 |
+| `meta.ts` | 契約版本、API 功能名稱、`GET /api/health` 與 `GET /api/meta` 的形狀、啟動選項 |
 | `tags.ts` | 便箋 tag 的解析規則（原本前後端各一份） |
 | `pairing.ts` | `hestia pair` 的配對連結格式（網頁連結與 App 深層連結）與解析 |
 | `repo.ts` | 專案的檔案與 git（唯讀）：專案路徑的 git 狀態、未 commit 的檔案、未 push 的 commit、diff、commit 詳情、檔案樹與檔案內容、本機分支的歷史 |
@@ -29,6 +29,10 @@
 
 - API 端的 `toSessionDto`、`toPublicManagedSession`、`toPublicConversation` 都以契約的型別為回傳型別，欄位有出入時會直接編譯失敗。
 - 前端 `api.ts` 的 `ManagedSession`、`Turn`、`NoteRecord` 等名稱沿用，但型別都來自契約。
+
+## `GET /api/health`
+
+不需要登入。回傳 `{ "ok": true, "name": "hestia" }`：`name` 是這套安裝的指令名稱（`install.sh --command-name`，例如正式版 `hestia`、dev `hestia-dev`），讓 App 在登入任何一套之前，就能列出一台 SSH 伺服器上有哪幾套 Hestia。指令名稱不是機密：打得到這個路徑的人本來就連得到後端。比這個欄位舊的後端只回 `{ "ok": true }`，App 以 port 稱呼它（「Hestia（port 4791）」）。
 
 ## `GET /api/meta`
 

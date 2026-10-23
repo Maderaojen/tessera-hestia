@@ -59,6 +59,33 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
+describe('GET /api/health', () => {
+  // The shell this runs in may be a dev install's own (HESTIA_COMMAND_NAME).
+  const original = process.env.HESTIA_COMMAND_NAME;
+  afterEach(() => {
+    if (original === undefined) delete process.env.HESTIA_COMMAND_NAME;
+    else process.env.HESTIA_COMMAND_NAME = original;
+  });
+
+  async function healthAs(name: string | undefined) {
+    if (name === undefined) delete process.env.HESTIA_COMMAND_NAME;
+    else process.env.HESTIA_COMMAND_NAME = name;
+    vi.resetModules();
+    ({ createApp } = await import('../src/server.js'));
+    return request(createApp()).get('/api/health');
+  }
+
+  it('answers without a login, naming the install by its command (hestia unless set)', async () => {
+    const res = await healthAs(undefined);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true, name: 'hestia' });
+  });
+
+  it('a dev install says hestia-dev, so the app can tell the two apart on one SSH server', async () => {
+    expect((await healthAs('hestia-dev')).body).toEqual({ ok: true, name: 'hestia-dev' });
+  });
+});
+
 describe('CORS', () => {
   const webApp = () => {
     process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN;
@@ -314,7 +341,7 @@ describe('requireAuth gate', () => {
     const app = createApp();
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true });
+    expect(res.body).toMatchObject({ ok: true });
   });
 
   it('/auth/status is reachable with no auth (it reports the state, it does not gate it)', async () => {

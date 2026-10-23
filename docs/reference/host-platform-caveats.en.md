@@ -4,7 +4,7 @@
 - Related: [Install guide](../guides/install.en.md), [CLI version alignment](cli-version-alignment.en.md)
 - Chinese version: [host-platform-caveats.md](host-platform-caveats.md)
 
-This list records the exceptions the backend runs into on each operating system (Linux and macOS for now), and those of the platforms the app runs on (iOS's WebKit for now): what you see, why, whether the code can tell, and what to do. Add an entry when you hit a new one; when it is fixed, change its status instead of deleting it, so later changes don't walk back into it.
+This list records the exceptions the backend runs into on each operating system (Linux and macOS for now), and those of the platforms the app runs on (iOS's WebKit and Android for now): what you see, why, whether the code can tell, and what to do. Add an entry when you hit a new one; when it is fixed, change its status instead of deleting it, so later changes don't walk back into it.
 
 Each entry's ID is shared with the code's error codes, interface text keys and pre-install checks, so the docs and the code can find each other.
 
@@ -33,6 +33,7 @@ Each entry's ID is shared with the code's error codes, interface text keys and p
 | [`macos.bash32.multibyte-var`](#macosbash32multibyte-var) | macOS | Handled | bash 3.2 takes a multibyte character right after a variable as part of its name |
 | [`macos.no-sha256sum`](#macosno-sha256sum) | macOS | Handled | There is no `sha256sum` |
 | [`ios.webkit.no-snapshot-gesture-off`](#ioswebkitno-snapshot-gesture-off) | iOS app | Handled | Swiping back from the left edge on Settings shows a white page instead of the page before |
+| [`android.recents.pre13-snapshot`](#androidrecentspre13-snapshot) | Android app | Recorded | With the app lock on, Android 12 and earlier may still show the content in recents |
 
 ## macOS
 
@@ -71,7 +72,7 @@ Each entry's ID is shared with the code's error codes, interface text keys and p
 - **What you see**: after an upgrade or reinstall the folder prompts come back.
 - **Why**: privacy permissions belong to the executable. Upgrading Node.js, switching versions with `nvm` or reinstalling all mean a different `node`, which macOS treats as a new program.
 - **How to detect**: the code can't tell.
-- **What to do**: use the Node.js the installer provides (used automatically when no suitable system Node is found, or with `--bundled-node`); then only upgrading it on purpose needs allowing again.
+- **What to do**: use the Node.js the installer provides (used automatically when no suitable system Node is found, or with `--bundled-node`); then only upgrading it on purpose needs allowing again. That is why the installer never replaces it by itself: a newer release is only mentioned, and `--update-node` updates it (for example for a security fix), after which it needs allowing once more.
 - **Status**: Recorded
 
 ### `macos.service.needs-login`
@@ -176,3 +177,14 @@ Each entry's ID is shared with the code's error codes, interface text keys and p
 - **How to detect**: the code can't tell (nothing signals whether a snapshot was taken); only on a device.
 - **What to do**: handled, in the web code only (no native change). Home no longer turns the gesture off; it blocks it at its origin as iOS Safari does: a touch starting within 24 px of the left edge is `preventDefault()`ed on touchstart, except on a control such as a button (`web/src/shell/navigation/nativeBackGesture.ts`). Chat still turns it off where the web's own edge swipe runs (its back button reaches into the edge, and blocking a touch there would eat the tap), but turns it on for the moment Chat is left (the navigation's `beforeEach`) and back to what the next page wants once the navigation ends, so WebKit can take Chat's snapshot. To be confirmed on a device.
 - **Status**: Handled
+
+## Android app
+
+### `android.recents.pre13-snapshot`
+
+- **Platform**: the app on Android 8–12 (API 26–32); recorded while building the app lock (2026-10-22), not yet seen on a device with those versions
+- **What you see**: with the app lock on, switching apps on Android 12 or earlier may still show the app's content in the recents thumbnail instead of the cover. Android 13 and later don't.
+- **Why**: `Activity.setRecentsScreenshotEnabled(false)`, which hides only the recents picture, exists from Android 13 (API 33). Older versions only have `FLAG_SECURE`, and keeping it on would stop the user taking screenshots inside the app too, so the app sets it in `onPause` and clears it in `onResume`; some devices take the thumbnail before `onPause`.
+- **How to detect**: the code can't tell (nothing signals when the thumbnail is taken); only on a device.
+- **What to do**: best effort (`handleOnPause` in `web/native-plugins/app-lock/android/…/AppLockPlugin.java`); there is nothing better to do, and Android 13 and later are not affected.
+- **Status**: Recorded
