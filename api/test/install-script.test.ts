@@ -658,3 +658,92 @@ describe('install.sh latest_node_version', () => {
     expect((await latest('[{"version":"v99.1.0"}]')).status).not.toBe(0);
   });
 });
+
+describe('install.sh check_existing_unit', () => {
+  const check = (content: string, apiDir: string, platform: 'linux' | 'darwin' = 'darwin') => {
+    const unit = path.join(home, platform === 'darwin' ? 'agent.plist' : 'hestia-api.service');
+    const functions = 'eval "$(sed -n \'/^check_existing_unit() {/,/^}/p\' "$SCRIPT")"';
+    return writeFile(unit, content).then(() => {
+      try {
+        return platformShell(platform, `SCRIPT='${SCRIPT}'\nSERVICE_FILE='${unit}'\nAPI_DIR='${apiDir}'\nconfirm() { return 0; }\n${functions}\ncheck_existing_unit && echo PASSED`);
+      } catch (error) {
+        return String((error as { stdout?: string }).stdout);
+      }
+    });
+  };
+  const plist = (dir: string, marker: boolean) => `<?xml version="1.0" encoding="UTF-8"?>\n${marker ? '<!-- # Written by Hestia scripts/install.sh (x) — re-run it to change this file. -->\n' : ''}<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>me.maderaojen.hestia-api</string><key>WorkingDirectory</key><string>${dir}</string></dict></plist>\n`;
+
+  it.runIf(process.platform === 'darwin')('takes its own plist, marker or not when it runs this installation, and refuses anyone else’s', async () => {
+    const app = path.join(home, 'app');
+    expect(await check(plist(app, true), app)).toContain('PASSED');
+    const rewritten = await check(plist(app, false), app);
+    expect(rewritten).toContain('NOTE');
+    expect(rewritten).toContain('PASSED');
+    const other = await check(plist(path.join(home, 'elsewhere'), false), app);
+    expect(other).toContain('DIE');
+    expect(other).not.toContain('PASSED');
+  });
+
+  // The same on Linux, where the unit is read with sed: runs anywhere.
+  const unit = (dir: string, marker: boolean) => `${marker ? '# Written by Hestia scripts/install.sh (x) — re-run it to change this file.\n' : ''}[Unit]\nDescription=Hestia API\n\n[Service]\nWorkingDirectory=${dir}\nExecStart="/n/node" --env-file=.env dist/src/main.js\n`;
+
+  it('on Linux too: its own unit, marker or not when it runs this installation; anyone else’s refused', async () => {
+    const app = path.join(home, 'app');
+    const own = await check(unit(app, true), app, 'linux');
+    expect(own).toContain('PASSED');
+    expect(own).not.toContain('NOTE');
+    const rewritten = await check(unit(app, false), app, 'linux');
+    expect(rewritten).toContain('NOTE');
+    expect(rewritten).toContain('PASSED');
+    const other = await check(unit(path.join(home, 'elsewhere'), false), app, 'linux');
+    expect(other).toContain('DIE');
+    expect(other).not.toContain('PASSED');
+    // No WorkingDirectory at all (hand-written): not ours.
+    const bare = await check('[Service]\nExecStart=/usr/bin/true\n', app, 'linux');
+    expect(bare).toContain('DIE');
+  });
+
+  it('on Linux, its own unit for another folder asks before switching (and goes on when told yes)', async () => {
+    const out = await check(unit(path.join(home, 'old'), true), path.join(home, 'app'), 'linux');
+    expect(out).toContain('WARN');
+    expect(out).toContain('PASSED');
+  });
+});
+
+describe('install.sh kept_node', () => {
+  // A node of the machine's (or a version manager's) named in .env: kept on
+  // an upgrade while it's still good; anything else gives way to the usual
+  // choice (the PATH's node, or the downloaded one).
+  async function fakeNode(dir: string, { ok = true, npm = true } = {}): Promise<string> {
+    await mkdir(dir, { recursive: true });
+    const node = path.join(dir, 'node');
+    // node_ok runs it with -e and package.json: exit 0 is recent enough.
+    await writeFile(node, `#!/bin/sh\nexit ${ok ? 0 : 1}\n`, { mode: 0o755 });
+    if (npm) await writeFile(path.join(dir, 'npm'), '#!/bin/sh\n', { mode: 0o755 });
+    return node;
+  }
+  function kept(envLines: string | null): string {
+    const envFile = path.join(home, 'kept.env');
+    const functions = 'eval "$(sed -n \'/^env_get() {/,/^}/p;/^node_ok() {/,/^}/p;/^kept_node() {/,/^}/p\' "$SCRIPT")"';
+    const write = envLines === null ? '' : `cat > '${envFile}' <<'ENV'\n${envLines}\nENV\n`;
+    return execFileSync('bash', ['-c', `set -euo pipefail\n${write}${functions}\nprintf '[%s]' "$(kept_node)"`], {
+      env: { PATH: process.env.PATH ?? '', HOME: home, SCRIPT, API_DIR, ENV_FILE: envFile, NODE_HOME: path.join(home, 'share', 'hestia', 'node') },
+      encoding: 'utf8',
+    });
+  }
+
+  it('keeps the node .env names when it runs, is recent enough and has npm beside it', async () => {
+    const node = await fakeNode(path.join(home, 'nvm', 'v24', 'bin'));
+    expect(kept(`HESTIA_NODE_BIN=${node}`)).toBe(`[${node}]`);
+  });
+
+  it('gives way when there is none, it is gone, too old, without npm, or the downloaded one', async () => {
+    expect(kept(null)).toBe('[]');
+    expect(kept('PORT=4792')).toBe('[]');
+    expect(kept(`HESTIA_NODE_BIN=${path.join(home, 'gone', 'node')}`)).toBe('[]');
+    expect(kept(`HESTIA_NODE_BIN=${await fakeNode(path.join(home, 'old', 'bin'), { ok: false })}`)).toBe('[]');
+    expect(kept(`HESTIA_NODE_BIN=${await fakeNode(path.join(home, 'bare', 'bin'), { npm: false })}`)).toBe('[]');
+    const downloaded = await fakeNode(path.join(home, 'share', 'hestia', 'node', 'current', 'bin'));
+    expect(kept(`HESTIA_NODE_BIN=${downloaded}`)).toBe('[]');
+  });
+});

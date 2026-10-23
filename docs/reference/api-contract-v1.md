@@ -87,6 +87,7 @@
 - `hestia pair` 印出 QR code 後會等配對碼被使用，靠兩個只給本機 CLI 的端點（和 `POST /auth/pairing-code` 一樣，要 local tool token、而且是本機直接連線）：
   - `POST /auth/pairing-code/status`，body `{ code }` → `{ status: 'pending', expiresInMs }`、`{ status: 'used', usedAt, device }`（`device` 可能是 `null`）或 `{ status: 'expired' }`（不認得的碼也回 `expired`）。
   - `POST /auth/pairing-code/revoke`，body `{ code }` → `{ ok: true, revoked }`：登出這組配對碼換到的那個登入（用過的碼記 1 小時）。
+  - `POST /auth/pairing-code/cancel`，body `{ code }` → `{ ok: true, cancelled }`：讓一組還沒用過的配對碼立刻失效（`hestia connect` 在手機改走 SSH 或指令提前結束時用）；用過的碼不受影響。
 - **打開連結不能直接配對**：先顯示後端的完整 origin，使用者按確認後才呼叫 `POST /auth/pair`，取消就丟掉配對碼（網頁版已經這樣做；App 必須保留同一個確認步驟）。任何人都能傳這種連結，自動配對等於讓對方把你加到他的後端。
 - `parsePairingLink()` 兩種都認得，App 內建的掃描器兩種都接受：`hestia pair` 預設印的是網頁連結。App 在「新增主機」掃到的連結一樣先走確認畫面；在 SSH 主機的「登入 Hestia」掃到的只取配對碼、直接經 tunnel 配對（忽略連結裡的網址）。
 - CLI 選哪一種：`hestia pair --link web|app|both`，預設看 `.env` 的 `HESTIA_PAIR_LINK`，再來是 `web`（`docs/guides/install.md`）。

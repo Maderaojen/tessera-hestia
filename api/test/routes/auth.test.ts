@@ -564,6 +564,22 @@ describe('pairing a device by QR code (hestia pair)', () => {
     expect((await status(app, code)).body).toEqual({ status: 'expired' });
   });
 
+  it('hestia connect can take back a code nobody used yet; a used one stays, its login with it', async () => {
+    const app = createApp();
+    const cancel = (code: string) => request(app).post('/api/auth/pairing-code/cancel').set('X-Hestia-Token', 'tool-token').send({ code });
+    const unused = await pairingCode(app);
+    expect((await cancel(unused)).body).toEqual({ ok: true, cancelled: true });
+    expect((await status(app, unused)).body).toEqual({ status: 'expired' });
+    expect((await request(app).post('/api/auth/pair').send({ code: unused })).status).toBe(401);
+    expect((await cancel(unused)).body.cancelled).toBe(false);
+
+    const used = await pairingCode(app);
+    const paired = await request(app).post('/api/auth/pair').send({ code: used });
+    expect((await cancel(used)).body.cancelled).toBe(false);
+    expect((await status(app, used)).body).toMatchObject({ status: 'used' });
+    expect((await request(app).get('/api/auth/status').set('Authorization', `Bearer ${paired.body.token as string}`)).body).toMatchObject({ authenticated: true });
+  });
+
   it('a pairing without a device name still works, and reads as an unknown device', async () => {
     const app = createApp();
     const code = await pairingCode(app);
@@ -571,12 +587,12 @@ describe('pairing a device by QR code (hestia pair)', () => {
     expect((await status(app, code)).body).toMatchObject({ status: 'used', device: null });
   });
 
-  it('only the local tool can read or revoke a code', async () => {
+  it('only the local tool can read, revoke or cancel a code', async () => {
     const app = createApp();
     const code = await pairingCode(app);
     const login = await request(app).post('/api/auth/login').send({ username: 'alice', password: PASSWORD });
     const bearer = `Bearer ${login.body.token as string}`;
-    for (const route of ['/api/auth/pairing-code/status', '/api/auth/pairing-code/revoke']) {
+    for (const route of ['/api/auth/pairing-code/status', '/api/auth/pairing-code/revoke', '/api/auth/pairing-code/cancel']) {
       expect((await request(app).post(route).set('Authorization', bearer).send({ code })).status).toBe(401);
       expect((await request(app).post(route).set('X-Hestia-Token', 'tool-token').set('X-Forwarded-For', '203.0.113.9').send({ code })).status).toBe(401);
     }

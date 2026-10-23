@@ -19,6 +19,7 @@ import {
   pairingStatus,
   redeemPairingCode,
   revokePairing,
+  cancelPairingCode,
   revokeToken,
   sessionAccountForRequest,
   sessionForRequest,
@@ -90,6 +91,20 @@ authRouter.post('/pairing-code/status', (req, res) => {
     return;
   }
   res.json(pairingStatus(parsed.data.code));
+});
+
+// Taking back a code before anyone used it (auth.ts's cancelPairingCode).
+authRouter.post('/pairing-code/cancel', (req, res) => {
+  if (!isLocalToolRequest(req)) {
+    sendError(res, 401, 'not_authenticated', 'not authenticated');
+    return;
+  }
+  const parsed = pairingCodeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendError(res, 400, 'invalid_request', 'code is required');
+    return;
+  }
+  res.json({ ok: true, cancelled: cancelPairingCode(parsed.data.code) });
 });
 
 authRouter.post('/pairing-code/revoke', async (req, res) => {

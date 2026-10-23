@@ -24,7 +24,7 @@ import {
   splitLines,
   withKeyFileLock,
   type KeyFiles,
-} from '../../src/cli/authorizedKeys.js';
+} from '../../src/ssh-access/authorizedKeys.js';
 
 // Every file here is under a fresh temporary directory: never ~/.ssh.
 
@@ -348,7 +348,7 @@ describe('the file', () => {
   it('takes turns across processes', async () => {
     mkdirSync(files.sshDir, { mode: 0o700 });
     writeFileSync(file(), `${OTHER}\n`);
-    const modulePath = fileURLToPath(new URL('../../src/cli/authorizedKeys.ts', import.meta.url));
+    const modulePath = fileURLToPath(new URL('../../src/ssh-access/authorizedKeys.ts', import.meta.url));
     const script = `
       import { addOneTimeLine, oneTimeLine } from ${JSON.stringify(modulePath)};
       const [dir, uid, i] = process.argv.slice(-3);

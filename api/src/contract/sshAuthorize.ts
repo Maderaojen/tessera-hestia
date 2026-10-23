@@ -101,9 +101,8 @@ function port(value: string | null): number | null {
   return n >= 1 && n <= 65535 ? n : null;
 }
 
-/** The app link (scheme `hestia` or `hestia-dev`). */
-export function sshAuthorizeLink(link: SshAuthorizeLink, scheme: string = APP_LINK_SCHEMES[0]!): string {
-  const query = new URLSearchParams();
+/** Writes the link's fields into a query (the ssh-authorize link's, or connect.ts's combined one). */
+export function writeSshAuthorizeQuery(link: SshAuthorizeLink, query: URLSearchParams): void {
   query.set('v', String(link.version));
   query.set('u', link.username);
   for (const address of link.addresses) query.append('a', address);
@@ -114,23 +113,10 @@ export function sshAuthorizeLink(link: SshAuthorizeLink, scheme: string = APP_LI
   query.set('s', link.secret);
   query.set('n', link.commandName);
   query.set('hp', String(link.hestiaPort));
-  return `${scheme}://ssh-authorize?${query.toString()}`;
 }
 
-/** An ssh-authorize link read back; null for anything else, or anything malformed. */
-export function parseSshAuthorizeLink(text: string): SshAuthorizeLink | null {
-  const trimmed = text.trim();
-  if (trimmed.length > SSH_AUTHORIZE_LINK_MAX_LENGTH) return null;
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    return null;
-  }
-  if (!APP_LINK_SCHEMES.some((scheme) => url.protocol === `${scheme}:`)) return null;
-  // `hestia://ssh-authorize?…` puts it in the host; `hestia:ssh-authorize?…` in the path.
-  if (url.hostname !== 'ssh-authorize' && url.pathname !== 'ssh-authorize') return null;
-  const q = url.searchParams;
+/** The link's fields read back from a query; null when any is missing or malformed, or the version isn't one this reads. */
+export function readSshAuthorizeQuery(q: URLSearchParams): SshAuthorizeLink | null {
   if (q.get('v') !== String(SSH_AUTHORIZE_LINK_VERSION)) return null;
   const username = q.get('u');
   const addresses = q.getAll('a');
@@ -148,4 +134,27 @@ export function parseSshAuthorizeLink(text: string): SshAuthorizeLink | null {
   if (!commandName || !COMMAND_NAME.test(commandName)) return null;
   if (sshPort === null || listenerPort === null || hestiaPort === null) return null;
   return { version: 1, username, addresses, sshPort, hostKeyFingerprints, ed25519Seed, listenerPort, secret, commandName, hestiaPort };
+}
+
+/** The app link (scheme `hestia` or `hestia-dev`). */
+export function sshAuthorizeLink(link: SshAuthorizeLink, scheme: string = APP_LINK_SCHEMES[0]!): string {
+  const query = new URLSearchParams();
+  writeSshAuthorizeQuery(link, query);
+  return `${scheme}://ssh-authorize?${query.toString()}`;
+}
+
+/** An ssh-authorize link read back; null for anything else, or anything malformed. */
+export function parseSshAuthorizeLink(text: string): SshAuthorizeLink | null {
+  const trimmed = text.trim();
+  if (trimmed.length > SSH_AUTHORIZE_LINK_MAX_LENGTH) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (!APP_LINK_SCHEMES.some((scheme) => url.protocol === `${scheme}:`)) return null;
+  // `hestia://ssh-authorize?…` puts it in the host; `hestia:ssh-authorize?…` in the path.
+  if (url.hostname !== 'ssh-authorize' && url.pathname !== 'ssh-authorize') return null;
+  return readSshAuthorizeQuery(url.searchParams);
 }

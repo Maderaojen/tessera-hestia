@@ -642,6 +642,18 @@ export function pairingStatus(code: string): PairingStatus {
   return { status: 'expired' };
 }
 
+// Takes back a code nobody has used yet (hestia connect: the QR's code once
+// the phone came in over SSH instead, or the command ends early). A used
+// code is left alone: ending the login it became is revokePairing's. True
+// when there was an unused one to take back.
+export function cancelPairingCode(code: string): boolean {
+  const key = digest(code);
+  const entry = pairingCodes.get(key);
+  if (!entry || entry.used) return false;
+  pairingCodes.delete(key);
+  return true;
+}
+
 // Ends the login a used code became. False when there is none (not used,
 // or no longer remembered).
 export function revokePairing(code: string): boolean {

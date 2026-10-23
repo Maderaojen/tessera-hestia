@@ -54,13 +54,22 @@ export function readLoginPath(shell = loginShell()): Promise<string[] | null> {
   });
 }
 
-/** Reads it now and every few minutes after (main.ts); a failed read keeps the last one. */
-export function startLoginPathRefresh(): void {
+/**
+ * Reads it now and every few minutes after (main.ts); a failed read keeps
+ * the last one. Started once: a second call only reads again. `read` and
+ * `intervalMs` are the tests'. Returns how to stop (tests).
+ */
+export function startLoginPathRefresh(options: { read?: () => Promise<string[] | null>; intervalMs?: number } = {}): () => void {
+  const read = options.read ?? (() => readLoginPath());
   const refresh = async () => {
-    const read = await readLoginPath();
-    if (read) dirs = read;
+    const next = await read().catch(() => null);
+    if (next) dirs = next;
   };
   void refresh();
-  timer ??= setInterval(() => { void refresh(); }, REFRESH_MS);
+  timer ??= setInterval(() => { void refresh(); }, options.intervalMs ?? REFRESH_MS);
   timer.unref();
+  return () => {
+    if (timer) clearInterval(timer);
+    timer = null;
+  };
 }

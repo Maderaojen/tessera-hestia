@@ -459,10 +459,16 @@ is_loopback_host() {
 # leaves nothing half done.
 check_existing_unit() {
   [ -f "$SERVICE_FILE" ] || return 0
-  grep -qF "$UNIT_MARKER" "$SERVICE_FILE" ||
-    die "$(msg install.service.notOurs unit "$SERVICE_FILE")"
   local previous
   previous="$(platform_service_working_dir)"
+  # Without the marker, one that runs this very installation is still ours:
+  # a tool that rewrites the file (macOS's plutil, a host's patch script)
+  # drops the comment and keeps the rest.
+  if ! grep -qF "$UNIT_MARKER" "$SERVICE_FILE"; then
+    [ -n "$previous" ] && [ "$previous" = "$API_DIR" ] ||
+      die "$(msg install.service.notOurs unit "$SERVICE_FILE")"
+    note "$(msg install.service.markerLost unit "$SERVICE_FILE")"
+  fi
   if [ -n "$previous" ] && [ "$previous" != "$API_DIR" ]; then
     warn "$(msg install.service.otherCode previous "$previous" current "$API_DIR")"
     confirm "$(msg install.service.switchCode)" y || die "$(msg install.common.cancelled)"
@@ -773,11 +779,35 @@ download_node() {
   ok "$(msg install.node.downloaded version "$version" dir "$NODE_HOME")"
 }
 
+# kept_node — the node this installation already runs on (its .env's
+# HESTIA_NODE_BIN), when it's still good: executable, recent enough, with
+# npm beside it. Not whichever node the PATH of the shell running the
+# upgrade finds first (another installation's, a version manager's): the
+# service, its folder permissions on macOS, and the hestia command keep the
+# node they had. Not this user's downloaded node either (NODE_HOME), which
+# --update-node looks after. Prints nothing otherwise; never fails.
+kept_node() {
+  local node
+  node="$(env_get HESTIA_NODE_BIN)"
+  case "$node" in ""|"$NODE_HOME"/*) return 0 ;; esac
+  [ -x "$node" ] && node_ok "$node" && [ -x "$(dirname "$node")/npm" ] || return 0
+  printf '%s\n' "$node"
+}
+
 # Which node runs everything here — the build, the service and the
 # hestia command: the machine's own when it's recent enough and has npm
 # beside it (unless --bundled-node), else this user's own copy, downloaded
 # when needed. Some distributions package npm apart from node.
-if [ "$BUNDLED_NODE" = 0 ] && have node && node_ok "$(command -v node)" && have npm; then
+# On an upgrade, the node this installation already runs on (kept_node)
+# stays while it's still good. The downloaded node is the branch below,
+# with --update-node.
+KEPT_NODE="$(kept_node)"
+if [ "$BUNDLED_NODE" = 0 ] && [ -n "$KEPT_NODE" ]; then
+  NODE_BIN="$KEPT_NODE"
+  PATH="$(dirname "$KEPT_NODE"):$PATH"
+  export PATH
+  [ "$UPDATE_NODE" = 0 ] || note "$(msg install.node.updateIgnored node "$NODE_BIN")"
+elif [ "$BUNDLED_NODE" = 0 ] && have node && node_ok "$(command -v node)" && have npm; then
   NODE_BIN="$(command -v node)"
   [ "$UPDATE_NODE" = 0 ] || note "$(msg install.node.updateIgnored node "$NODE_BIN")"
 else
@@ -1136,7 +1166,8 @@ RUN_CMD="$COMMAND_NAME"
 if [ "$(readlink -f "$LINK" 2>/dev/null)" != "$(readlink -f "$LINK_TARGET")" ] || ! have "$COMMAND_NAME"; then
   RUN_CMD="$LINK_TARGET"
 fi
-PAIR_CMD="$RUN_CMD pair"
+# The command a person runs later to connect a phone (pair and ssh-authorize in one).
+PAIR_CMD="$RUN_CMD connect"
 
 step "$(msg install.done.title)"
 if [ -n "$BASE_URL" ] && [ "$SERVICE_RUNNING" = 1 ]; then

@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { parsePublicKey } from '../../src/cli/authorizedKeys.js';
-import { macMatches, parseSshAuthorizeArgs, sshAuthorize, type SshAuthorizeDeps } from '../../src/cli/sshAuthorize.js';
+import { parsePublicKey } from '../../src/ssh-access/authorizedKeys.js';
+import { checkAuthorizeRequest, macMatches, parseSshAuthorizeArgs, sshAuthorize, type SshAuthorizeDeps } from '../../src/cli/sshAuthorize.js';
 import { parseSshAuthorizeLink, sshAuthorizeMacInput, type SshAuthorizeLink } from '../../src/contract/sshAuthorize.js';
 
 // The whole command in a temporary HOME: its own ~/.ssh, its own host keys,
@@ -343,5 +343,23 @@ describe('hestia ssh-authorize', () => {
     expect(macMatches(secret, PHONE, 'y', good)).toBe(false);
     expect(macMatches(secret, `${PHONE} `, 'x', good)).toBe(false);
     expect(macMatches(secret, PHONE, 'x', `${good}A`)).toBe(false);
+  });
+
+  it('checks the app’s request before asking anyone: shape, size, mac, key type; the label made safe', () => {
+    const secret = Buffer.alloc(32, 9);
+    const mac = (publicKey: string, label: string) => createHmac('sha256', secret).update(sshAuthorizeMacInput(publicKey, label)).digest('base64url');
+    const body = (publicKey: string, label: string, given = mac(publicKey, label)) => JSON.stringify({ publicKey, label, mac: given });
+    const good = checkAuthorizeRequest(body(PHONE, 'Jen’s phone\nrm -rf'), secret);
+    expect(good.ok).toBe(true);
+    if (good.ok) {
+      expect(good.key.fingerprint).toBe(parsePublicKey(PHONE)!.fingerprint);
+      expect(good.label).not.toContain('\n');
+    }
+    expect(checkAuthorizeRequest('not json', secret)).toEqual({ ok: false, status: 400, code: 'bad_request' });
+    expect(checkAuthorizeRequest('null', secret)).toEqual({ ok: false, status: 400, code: 'bad_request' });
+    expect(checkAuthorizeRequest(JSON.stringify({ publicKey: PHONE, label: 'x' }), secret)).toEqual({ ok: false, status: 400, code: 'bad_request' });
+    expect(checkAuthorizeRequest(body(PHONE, 'x'.repeat(257)), secret)).toEqual({ ok: false, status: 400, code: 'bad_request' });
+    expect(checkAuthorizeRequest(body(PHONE, 'x', mac(PHONE, 'y')), secret)).toEqual({ ok: false, status: 403, code: 'bad_mac' });
+    expect(checkAuthorizeRequest(body('ssh-dss AAAA x', 'x'), secret)).toEqual({ ok: false, status: 400, code: 'key_unsupported' });
   });
 });

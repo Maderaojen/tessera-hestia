@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { parseLoginPath, readLoginPath } from '../src/login-path.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { loginPathDirs, parseLoginPath, readLoginPath, startLoginPathRefresh } from '../src/login-path.js';
 import { probePath } from '../src/probe-path.js';
 
 // The probes also look where the login shell's PATH looks (login-path.ts):
@@ -39,5 +39,30 @@ describe('login shell PATH', () => {
     const dirs = probePath('/usr/bin:/opt/nvm/v22.17.1/bin', '/srv/node/bin/node', ['/opt/nvm/v22.23.4/bin', '/usr/bin']).split(':');
     expect(dirs.indexOf('/opt/nvm/v22.23.4/bin')).toBeGreaterThan(dirs.indexOf('/srv/node/bin'));
     expect(dirs.filter((dir) => dir === '/usr/bin')).toHaveLength(1);
+  });
+
+  it('refreshes now and then; a read that fails or finds nothing keeps the last one', async () => {
+    vi.useFakeTimers();
+    const reads: (string[] | null | Error)[] = [['/opt/nvm/a/bin'], null, new Error('hung up'), ['/opt/nvm/b/bin']];
+    const read = vi.fn(async () => {
+      const next = reads.shift() ?? null;
+      if (next instanceof Error) throw next;
+      return next;
+    });
+    const stop = startLoginPathRefresh({ read, intervalMs: 1000 });
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(loginPathDirs()).toEqual(['/opt/nvm/a/bin']);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(loginPathDirs()).toEqual(['/opt/nvm/a/bin']);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(loginPathDirs()).toEqual(['/opt/nvm/a/bin']);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(loginPathDirs()).toEqual(['/opt/nvm/b/bin']);
+      expect(read).toHaveBeenCalledTimes(4);
+    } finally {
+      stop();
+      vi.useRealTimers();
+    }
   });
 });

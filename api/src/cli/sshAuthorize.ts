@@ -20,11 +20,11 @@
 import { createHmac, generateKeyPairSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { renderUnicodeCompact } from 'uqr';
 import {
   sshAuthorizeLink,
   sshAuthorizeMacInput,
   type SshAuthorizeErrorCode,
+  type SshAuthorizeLink,
   type SshAuthorizeResponse,
 } from '../contract/sshAuthorize.js';
 import { APP_WEBVIEW_ORIGINS } from '../config.js';
@@ -43,7 +43,7 @@ import {
   type KeyFileErrorCode,
   type KeyFiles,
   type PublicKey,
-} from './authorizedKeys.js';
+} from '../ssh-access/authorizedKeys.js';
 import {
   hostKeyFingerprints,
   openSshVersion,
@@ -53,12 +53,9 @@ import {
   supportsExpiryTime,
   tailscaleAddresses,
   type SshdBanner,
-} from './sshdInfo.js';
-
-/** A usage text under the name this install's command goes by (hestia-dev for dev). */
-export function usageNamed(usage: string, commandName: string): string {
-  return usage.replace(/\bhestia (?=[a-z-])/g, `${commandName} `);
-}
+} from '../ssh-access/sshdInfo.js';
+import { terminalQr } from './terminalQr.js';
+import { usageNamed } from './usage.js';
 
 export const SSH_AUTHORIZE_USAGE = [
   'usage: hestia ssh-authorize [--address HOST]... [--ssh-port N] [--timeout SECONDS]',
@@ -72,8 +69,13 @@ function cors(req: http.IncomingMessage): Record<string, string> {
   const origin = req.headers.origin;
   return origin && APP_WEBVIEW_ORIGINS.includes(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
 }
+// The addresses the QR code carries: those found (Tailscale's, else the
+// machine's own), or more when the person names them with --address.
 const MAX_ADDRESSES = 4;
+const MAX_GIVEN_ADDRESSES = 8;
 const MAX_BODY = 16 * 1024;
+const MAX_LABEL = 256;
+const MAX_PUBLIC_KEY = 8192;
 
 /** Everything the command touches outside itself; main.ts gives the real ones, the tests their own. */
 export type SshAuthorizeDeps = {
@@ -160,12 +162,15 @@ function keyFileProblem(error: KeyFileError): string {
   return error.chmod ? `${text}\n  ${error.chmod}` : text;
 }
 
+/** Says why the run stopped, the way every hestia error is said, and ends it with 1. */
+function failure(deps: Pick<SshAuthorizeDeps, 'out'>, message: string): SshAuthorizeOutcome {
+  deps.out(`hestia: ${message}`);
+  return { exitCode: 1, pairingCode: null };
+}
+
 /** Runs the command; never exits the process itself. */
 export async function sshAuthorize(args: string[], deps: SshAuthorizeDeps): Promise<SshAuthorizeOutcome> {
-  const failed = (message: string): SshAuthorizeOutcome => {
-    deps.out(`hestia: ${message}`);
-    return { exitCode: 1, pairingCode: null };
-  };
+  const failed = (message: string) => failure(deps, message);
   if (args.includes('--help') || args.includes('-h')) {
     deps.out(usageNamed(SSH_AUTHORIZE_USAGE, deps.commandName));
     return { exitCode: 0, pairingCode: null };
@@ -177,25 +182,32 @@ export async function sshAuthorize(args: string[], deps: SshAuthorizeDeps): Prom
     if (error instanceof UsageError) return failed(`${error.message}\n${usageNamed(SSH_AUTHORIZE_USAGE, deps.commandName)}`);
     throw error;
   }
-  // The key goes to whoever runs Hestia, never to root's account.
-  if (deps.uid === 0) return failed(t('cli.sshAuthorize.root'));
-  const config = await readSshdConfig(deps.sshdConfigPath);
-  if (!readsDefaultFile(config, deps.home, deps.username)) return failed(t('cli.sshAuthorize.otherKeysFile', { path: deps.sshdConfigPath }));
+  const account = await accountProblem(deps);
+  if ('problem' in account) return failed(account.problem);
   if (options.publicKey !== null) return byPublicKey(options.publicKey, deps);
-  return byQrCode(options, config, deps);
+  return byQrCode(options, deps);
+}
+
+/** Whether a key may be added for this account at all: never root's, and only where sshd reads ~/.ssh/authorized_keys. */
+async function accountProblem(deps: SshAuthorizeDeps): Promise<{ config: [string, string][] | null } | { problem: string }> {
+  // The key goes to whoever runs Hestia, never to root's account.
+  if (deps.uid === 0) return { problem: t('cli.sshAuthorize.root') };
+  const config = await readSshdConfig(deps.sshdConfigPath);
+  if (!readsDefaultFile(config, deps.home, deps.username)) return { problem: t('cli.sshAuthorize.otherKeysFile', { path: deps.sshdConfigPath }) };
+  return { config };
 }
 
 /** --public-key: the person pasted the key themselves; same checks, same line. */
 async function byPublicKey(text: string, deps: SshAuthorizeDeps): Promise<SshAuthorizeOutcome> {
   const key = parsePublicKey(text);
-  if (!key) return { exitCode: (deps.out(`hestia: ${t('cli.sshAuthorize.keyUnsupported')}`), 1), pairingCode: null };
+  if (!key) return failure(deps, t('cli.sshAuthorize.keyUnsupported'));
   const comment = text.trim().split(/\s+/).slice(2).join(' ');
   try {
     const outcome = await authorizeKey(deps.files, key, deps.hestiaPort, comment || 'hestia', deps.now());
     reportOutcome(outcome, key, deps);
     return { exitCode: 0, pairingCode: null };
   } catch (error) {
-    if (error instanceof KeyFileError) return { exitCode: (deps.out(`hestia: ${keyFileProblem(error)}`), 1), pairingCode: null };
+    if (error instanceof KeyFileError) return failure(deps, keyFileProblem(error));
     throw error;
   }
 }
@@ -210,8 +222,8 @@ function reportOutcome(outcome: Awaited<ReturnType<typeof authorizeKey>>, key: P
   }
 }
 
-async function addresses(options: Options, deps: SshAuthorizeDeps): Promise<string[]> {
-  if (options.addresses.length > 0) return options.addresses.slice(0, 8);
+async function addresses(options: { addresses: string[] }, deps: SshAuthorizeDeps): Promise<string[]> {
+  if (options.addresses.length > 0) return options.addresses.slice(0, MAX_GIVEN_ADDRESSES);
   const tailnet = tailscaleAddresses(await deps.tailscaleStatus().catch(() => null));
   return (tailnet.length > 0 ? tailnet : deps.localAddresses()).slice(0, MAX_ADDRESSES);
 }
@@ -237,40 +249,116 @@ export function macMatches(secret: Buffer, publicKey: string, label: string, mac
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-async function byQrCode(options: Options, config: [string, string][] | null, deps: SshAuthorizeDeps): Promise<SshAuthorizeOutcome> {
-  const fail = (message: string): SshAuthorizeOutcome => ({ exitCode: (deps.out(`hestia: ${message}`), 1), pairingCode: null });
-  if (!deps.interactive) return fail(t('cli.sshAuthorize.needsTerminal'));
-  const sshPort = options.sshPort ?? sshdPort(config);
+/** What the app posts to the listener, checked: the key and its label, or why it's refused. */
+export type AuthorizeRequest =
+  | { ok: true; key: PublicKey; label: string }
+  | { ok: false; status: number; code: SshAuthorizeErrorCode };
+
+/**
+ * The checks on the app's request, before anyone is asked anything: JSON
+ * of the right shape and size, the mac made with this run's secret, a key
+ * type this accepts. The label comes back safe to write as a comment.
+ */
+export function checkAuthorizeRequest(text: string, secret: Buffer): AuthorizeRequest {
+  let body: { publicKey?: unknown; label?: unknown; mac?: unknown };
+  try {
+    body = JSON.parse(text) as typeof body;
+  } catch {
+    return { ok: false, status: 400, code: 'bad_request' };
+  }
+  if (typeof body?.publicKey !== 'string' || typeof body.label !== 'string' || typeof body.mac !== 'string'
+    || body.label.length > MAX_LABEL || body.publicKey.length > MAX_PUBLIC_KEY) {
+    return { ok: false, status: 400, code: 'bad_request' };
+  }
+  if (!macMatches(secret, body.publicKey, body.label, body.mac)) return { ok: false, status: 403, code: 'bad_mac' };
+  const key = parsePublicKey(body.publicKey);
+  if (!key) return { ok: false, status: 400, code: 'key_unsupported' };
+  return { ok: true, key, label: safeComment(body.label) };
+}
+
+/** Everything a QR code needs, checked before one is shown: sshd answering and new enough, host keys, where to reach it, a writable key file. */
+export type SshReady = { sshPort: number; fingerprints: string[]; addresses: string[] };
+
+/**
+ * The checks before a QR code (ssh-authorize's errors; for hestia connect,
+ * the reason it has no SSH fallback). `maxAddresses` keeps a combined QR
+ * code small enough for a terminal.
+ */
+export async function sshPreflight(
+  options: { addresses: string[]; sshPort: number | null },
+  deps: SshAuthorizeDeps,
+  maxAddresses?: number,
+): Promise<{ ok: true; ready: SshReady } | { ok: false; problem: string }> {
+  const no = (problem: string) => ({ ok: false as const, problem });
+  if (!deps.interactive) return no(t('cli.sshAuthorize.needsTerminal'));
+  const account = await accountProblem(deps);
+  if ('problem' in account) return no(account.problem);
+  const sshPort = options.sshPort ?? sshdPort(account.config);
   const banner = await deps.banner(sshPort);
   if (banner.kind !== 'banner') {
     const hint = deps.remoteLoginSetting ? `\n  ${t('cli.sshAuthorize.remoteLoginHint')}` : '';
-    return fail(t('cli.sshAuthorize.sshdUnreachable', { port: sshPort }) + hint);
+    return no(t('cli.sshAuthorize.sshdUnreachable', { port: sshPort }) + hint);
   }
   const version = openSshVersion(banner.text);
-  if (!version || !supportsExpiryTime(version)) return fail(t('cli.sshAuthorize.sshdTooOld', { banner: banner.text }));
+  if (!version || !supportsExpiryTime(version)) return no(t('cli.sshAuthorize.sshdTooOld', { banner: banner.text }));
   const fingerprints = await hostKeyFingerprints(deps.hostKeyDir);
-  if (fingerprints.length === 0) return fail(t('cli.sshAuthorize.noHostKeys', { dir: deps.hostKeyDir }));
-  const reach = await addresses(options, deps);
-  if (reach.length === 0) return fail(t('cli.sshAuthorize.noAddress'));
+  if (fingerprints.length === 0) return no(t('cli.sshAuthorize.noHostKeys', { dir: deps.hostKeyDir }));
+  const reach = (await addresses(options, deps)).slice(0, maxAddresses);
+  if (reach.length === 0) return no(t('cli.sshAuthorize.noAddress'));
   // A file the run would stop at is said now, before a QR code is shown.
   try {
     await checkSshDir(deps.files);
     await readKeyFile(deps.files);
   } catch (error) {
-    if (error instanceof KeyFileError) return fail(keyFileProblem(error));
+    if (error instanceof KeyFileError) return no(keyFileProblem(error));
     throw error;
   }
+  return { ok: true, ready: { sshPort, fingerprints, addresses: reach } };
+}
 
+/** How an authorize session ended. `closed`: its owner ended it (hestia connect, once the phone came in by the URL). */
+export type AuthorizeResult =
+  | { kind: 'done'; pairingCode: string | null }
+  | { kind: 'declined' | 'expired' | 'interrupted' | 'error' | 'closed' };
+
+export type AuthorizeSession = {
+  /** What goes in the QR code. */
+  link: SshAuthorizeLink;
+  finished: Promise<AuthorizeResult>;
+  /** Ends it (if it hasn't ended) as `closed`. */
+  close: () => void;
+  /** Closes the listener, forgets the secret and removes the one-time line; always await it. */
+  cleanup: () => Promise<void>;
+};
+
+/**
+ * One QR code's worth of authorizing: the one-time key and its line, the
+ * listener, the question here, the real line written and a pairing code.
+ * Ends by itself after `timeoutS` while nobody has asked (a person
+ * answering the question isn't cut off). `received` is called when a
+ * request passes its checks, before the question.
+ */
+export async function openAuthorizeSession(
+  ready: SshReady,
+  timeoutS: number,
+  deps: SshAuthorizeDeps,
+  events: { received?: () => void } = {},
+): Promise<AuthorizeSession | { problem: string }> {
   const { seed, publicBase64 } = oneTimeKey();
   const secret = randomBytes(32);
   const comment = oneTimeComment();
   const started = deps.now();
-  const expires = new Date(started.getTime() + options.timeoutS * 1000);
+  const expires = new Date(started.getTime() + timeoutS * 1000);
 
-  // How the run ends: settled once, by the app's request, the timeout or Ctrl-C.
-  let settle!: (result: { kind: 'done'; pairingCode: string | null } | { kind: 'declined' | 'expired' | 'interrupted' | 'error' }) => void;
-  const finished = new Promise<Parameters<typeof settle>[0]>((resolve) => { settle = resolve; });
+  // How the run ends: settled once, by the app's request, the timeout, Ctrl-C or close().
+  let settle!: (result: AuthorizeResult) => void;
+  const finished = new Promise<AuthorizeResult>((resolve) => { settle = resolve; });
   let state: 'waiting' | 'confirming' | 'over' = 'waiting';
+  const end = (result: AuthorizeResult) => {
+    if (state === 'over' && result.kind !== 'done' && result.kind !== 'declined' && result.kind !== 'error') return;
+    state = 'over';
+    settle(result);
+  };
   const abort = new AbortController();
 
   const respond = (res: http.ServerResponse, status: number, body: SshAuthorizeResponse) => {
@@ -301,21 +389,12 @@ async function byQrCode(options: Options, config: [string, string][] | null, dep
 
   const handle = async (req: http.IncomingMessage, res: http.ServerResponse, text: string) => {
     if (state !== 'waiting') return refuse(res, 409, 'busy');
-    let body: { publicKey?: unknown; label?: unknown; mac?: unknown };
-    try {
-      body = JSON.parse(text) as typeof body;
-    } catch {
-      return refuse(res, 400, 'bad_request');
-    }
-    if (typeof body?.publicKey !== 'string' || typeof body.label !== 'string' || typeof body.mac !== 'string' || body.label.length > 256 || body.publicKey.length > 8192) {
-      return refuse(res, 400, 'bad_request');
-    }
-    if (!macMatches(secret, body.publicKey, body.label, body.mac)) return refuse(res, 403, 'bad_mac');
-    const key = parsePublicKey(body.publicKey);
-    if (!key) return refuse(res, 400, 'key_unsupported');
+    const request = checkAuthorizeRequest(text, secret);
+    if (!request.ok) return refuse(res, request.status, request.code);
+    const { key, label } = request;
     // The first request that passes is the one; any other is turned away from here on.
     state = 'confirming';
-    const label = safeComment(body.label);
+    events.received?.();
     // The app giving up (its connection gone) ends the question too.
     const gone = () => abort.abort();
     res.on('close', gone);
@@ -326,8 +405,7 @@ async function byQrCode(options: Options, config: [string, string][] | null, dep
       res.off('close', gone);
       if (!res.writableEnded) refuse(res, 200, 'declined');
       deps.out(t('cli.sshAuthorize.declined'));
-      state = 'over';
-      return settle({ kind: abort.signal.aborted ? 'interrupted' : 'declined' });
+      return end({ kind: abort.signal.aborted ? 'interrupted' : 'declined' });
     }
     try {
       const outcome = await authorizeKey(deps.files, key, deps.hestiaPort, label, deps.now());
@@ -342,13 +420,11 @@ async function byQrCode(options: Options, config: [string, string][] | null, dep
         name: deps.commandName,
         ...(outcome.result === 'present_unrestricted' || outcome.result === 'present_other' ? { suggestedLine: outcome.suggested } : {}),
       });
-      state = 'over';
-      settle({ kind: 'done', pairingCode });
+      end({ kind: 'done', pairingCode });
     } catch (error) {
       refuse(res, 500, 'write_failed');
       deps.out(`hestia: ${error instanceof KeyFileError ? keyFileProblem(error) : String(error)}`);
-      state = 'over';
-      settle({ kind: 'error' });
+      end({ kind: 'error' });
     }
   };
 
@@ -360,61 +436,81 @@ async function byQrCode(options: Options, config: [string, string][] | null, dep
   const listenerPort = (server.address() as AddressInfo).port;
   const stopInterrupt = deps.onInterrupt(() => {
     abort.abort();
-    state = 'over';
-    settle({ kind: 'interrupted' });
+    if (state !== 'over') end({ kind: 'interrupted' });
   });
+  // Only while waiting: a person answering the question isn't cut off.
+  const timer = setTimeout(() => {
+    if (state === 'waiting') end({ kind: 'expired' });
+  }, timeoutS * 1000);
   let added = false;
-  try {
-    try {
-      await addOneTimeLine(deps.files, oneTimeLine(publicBase64, listenerPort, expires, comment), started);
-      added = true;
-    } catch (error) {
-      if (error instanceof KeyFileError) return fail(keyFileProblem(error));
-      throw error;
-    }
-    const link = sshAuthorizeLink({
-      version: 1,
-      username: deps.username,
-      addresses: reach,
-      sshPort,
-      hostKeyFingerprints: fingerprints,
-      ed25519Seed: seed.toString('base64url'),
-      listenerPort,
-      secret: secret.toString('base64url'),
-      commandName: deps.commandName,
-      hestiaPort: deps.hestiaPort,
-    }, deps.scheme);
-    seed.fill(0);
-    printQr(link, fingerprints, options.timeoutS, deps);
-    // Only while waiting: a person answering the question isn't cut off.
-    const timer = setTimeout(() => {
-      if (state !== 'waiting') return;
-      state = 'over';
-      settle({ kind: 'expired' });
-    }, options.timeoutS * 1000);
-    const result = await finished;
+  const cleanup = async () => {
     clearTimeout(timer);
-    if (result.kind === 'expired') deps.out(t('cli.sshAuthorize.expired'));
-    if (result.kind === 'interrupted') deps.out(t('cli.sshAuthorize.interrupted'));
-    return result.kind === 'done' ? { exitCode: 0, pairingCode: result.pairingCode } : { exitCode: 1, pairingCode: null };
-  } finally {
     stopInterrupt();
     abort.abort();
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     secret.fill(0);
     if (added) {
+      added = false;
       await removeOneTimeLine(deps.files, comment, deps.now()).catch((error: unknown) => {
         deps.out(`hestia: ${error instanceof KeyFileError ? keyFileProblem(error) : String(error)}`);
         deps.out(t('cli.sshAuthorize.cleanupFailed', { comment }));
       });
     }
+  };
+  try {
+    await addOneTimeLine(deps.files, oneTimeLine(publicBase64, listenerPort, expires, comment), started);
+    added = true;
+  } catch (error) {
+    seed.fill(0);
+    await cleanup();
+    if (error instanceof KeyFileError) return { problem: keyFileProblem(error) };
+    throw error;
+  }
+  const link: SshAuthorizeLink = {
+    version: 1,
+    username: deps.username,
+    addresses: ready.addresses,
+    sshPort: ready.sshPort,
+    hostKeyFingerprints: ready.fingerprints,
+    ed25519Seed: seed.toString('base64url'),
+    listenerPort,
+    secret: secret.toString('base64url'),
+    commandName: deps.commandName,
+    hestiaPort: deps.hestiaPort,
+  };
+  seed.fill(0);
+  return {
+    link,
+    finished,
+    close: () => {
+      abort.abort();
+      if (state === 'waiting' || state === 'confirming') end({ kind: 'closed' });
+    },
+    cleanup,
+  };
+}
+
+async function byQrCode(options: Options, deps: SshAuthorizeDeps): Promise<SshAuthorizeOutcome> {
+  const fail = (message: string) => failure(deps, message);
+  const pre = await sshPreflight(options, deps);
+  if (!pre.ok) return fail(pre.problem);
+  const session = await openAuthorizeSession(pre.ready, options.timeoutS, deps);
+  if ('problem' in session) return fail(session.problem);
+  try {
+    printQr(sshAuthorizeLink(session.link, deps.scheme), pre.ready.fingerprints, options.timeoutS, deps);
+    const result = await session.finished;
+    if (result.kind === 'expired') deps.out(t('cli.sshAuthorize.expired'));
+    if (result.kind === 'interrupted') deps.out(t('cli.sshAuthorize.interrupted'));
+    return result.kind === 'done' ? { exitCode: 0, pairingCode: result.pairingCode } : { exitCode: 1, pairingCode: null };
+  } finally {
+    await session.cleanup();
   }
 }
 
 function printQr(link: string, fingerprints: string[], timeoutS: number, deps: SshAuthorizeDeps): void {
-  // White on black, as `hestia pair` draws it (see main.ts).
-  const qr = renderUnicodeCompact(link, { border: 2 }).split('\n').map((line) => `  \x1b[97;40m${line}\x1b[0m`);
+  // Always a terminal here (byQrCode needs one).
+  const qr = terminalQr(link, { color: true });
   deps.out([
     '',
     `  ${t('cli.sshAuthorize.scan')}`,

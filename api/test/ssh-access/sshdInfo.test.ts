@@ -13,7 +13,7 @@ import {
   sshdPort,
   supportsExpiryTime,
   tailscaleAddresses,
-} from '../../src/cli/sshdInfo.js';
+} from '../../src/ssh-access/sshdInfo.js';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(path.join(os.tmpdir(), 'hestia-sshd-')); });

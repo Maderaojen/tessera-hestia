@@ -6,6 +6,7 @@
 //   hestia delegate (start|stop|done|review|status) …   (see delegate.ts)
 //   hestia conversation show …                           (see conversation.ts)
 //   hestia ssh-authorize [--address HOST]… [--public-key KEY] (see sshAuthorize.ts)
+//   hestia connect [--url URL] [--no-ssh] …              (see connect.ts: pair and ssh-authorize in one QR code)
 //
 // Opens a tmux for the project the directory (default: here) belongs to,
 // registered with the app so it shows up on the phone too, and attaches to
@@ -35,7 +36,6 @@ import os from 'node:os';
 import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { renderUnicodeCompact } from 'uqr';
 import { appLinkScheme, COMMAND_NAME, DEFAULT_FRONTEND_ORIGIN, HOST, LOCAL_TOOL_TOKEN_PATH, localApiOrigin, PORT } from '../config.js';
 import { hostPlatform } from '../host-platform/index.js';
 import { attachCommand } from './attach.js';
@@ -43,8 +43,11 @@ import { CONVERSATION_USAGE, conversationCommand } from './conversation.js';
 import { defaultTmuxName, DELEGATE_USAGE, delegateCommand, fileReader } from './delegate.js';
 import { frontendOrigin, pairBackendUrl, pairingLinks, pairLinkKinds, phoneReachHint } from './pairLink.js';
 import { projectsForDirectory } from './projectMatch.js';
-import { SSH_AUTHORIZE_USAGE, sshAuthorize, usageNamed } from './sshAuthorize.js';
-import { localAddresses, readSshdBanner } from './sshdInfo.js';
+import { connect, CONNECT_USAGE, type PairingCodeStatus } from './connect.js';
+import { SSH_AUTHORIZE_USAGE, sshAuthorize, type SshAuthorizeDeps } from './sshAuthorize.js';
+import { terminalQr } from './terminalQr.js';
+import { combinedUsage } from './usage.js';
+import { localAddresses, readSshdBanner } from '../ssh-access/sshdInfo.js';
 import { currentLocale, localeFromEnv, setDefaultLocale, t } from '../i18n/index.js';
 
 // The command speaks the terminal's language (HESTIA_LOCALE, else LANG…),
@@ -61,13 +64,14 @@ const CLI_FLAGS: Record<string, string> = {
   '--agy': 'native:agy',
 };
 
-const USAGE = usageNamed([
+const USAGE = combinedUsage([
   'usage: hestia open [dir] [--claude|--codex|--gemini|--agy] [--project NAME] [--no-attach]',
-  '       hestia pair [--url BACKEND_URL] [--link web|app|both] [--no-wait]',
-  DELEGATE_USAGE.replace('usage: ', '       '),
-  CONVERSATION_USAGE.replace('usage: ', '       '),
-  ...SSH_AUTHORIZE_USAGE.split('\n').map((line) => line.replace(/^(usage: | {7})/, '       ')),
-].join('\n'), COMMAND_NAME);
+  CONNECT_USAGE,
+  'usage: hestia pair [--url BACKEND_URL] [--link web|app|both] [--no-wait]',
+  DELEGATE_USAGE,
+  CONVERSATION_USAGE,
+  SSH_AUTHORIZE_USAGE,
+], COMMAND_NAME);
 
 function fail(message: string): never {
   console.error(`hestia: ${message}`);
@@ -159,11 +163,7 @@ async function pair(args: string[]): Promise<void> {
   const { code, expiresInMs } = await api<{ code: string; expiresInMs: number }>(token, '/auth/pairing-code', { method: 'POST' });
   const links = pairingLinks(kinds, frontendOrigin(process.env.CORS_ALLOWED_ORIGINS, DEFAULT_FRONTEND_ORIGIN), backendUrl, code, appLinkScheme(process.env));
   const link = links[0]!.link;
-  // White modules on black, set explicitly: the compact renderer draws the
-  // light parts, so on a light-themed terminal it would come out inverted,
-  // which many phone cameras won't read. Only for a terminal: in a file the
-  // escapes would be noise.
-  const qr = renderUnicodeCompact(link, { border: 2 }).split('\n').map((line) => (process.stdout.isTTY ? `  \x1b[97;40m${line}\x1b[0m` : line));
+  const qr = terminalQr(link, { color: Boolean(process.stdout.isTTY) });
   const minutes = Math.round(expiresInMs / 60_000);
   console.log([
     `${t('cli.pair.backend')}${cyan(backendUrl)}${dim(t('cli.pair.backendSource', { source: urlSource }))}`,
@@ -272,15 +272,30 @@ async function confirm(question: string, signal: AbortSignal): Promise<boolean> 
   }
 }
 
-async function sshAuthorizeCommand(args: string[]): Promise<void> {
+// The local tool token, or null when the API hasn't written one (not running).
+async function optionalToolToken(): Promise<string | null> {
+  return (await readFile(LOCAL_TOOL_TOKEN_PATH, 'utf8').catch(() => '')).trim() || null;
+}
+
+// A call to this install's API that answers null instead of exiting: ssh-authorize and connect carry on without it.
+async function tryApi<T>(token: string | null, route: string, body?: unknown): Promise<T | null> {
+  if (!token) return null;
+  const res = await fetch(`${API_ORIGIN}/api${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Hestia-Token': token, 'Accept-Language': currentLocale() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }).catch(() => null);
+  return res?.ok ? ((await res.json()) as T) : null;
+}
+
+// ssh-authorize's (and connect's) world: this account, this machine's sshd, the terminal.
+function sshDeps(issuePairingCode: () => Promise<string | null>): SshAuthorizeDeps {
   const user = os.userInfo();
-  const files = { sshDir: path.join(user.homedir, '.ssh'), uid: user.uid };
-  let token: string | null = null;
-  const outcome = await sshAuthorize(args, {
+  return {
     uid: process.getuid?.() ?? user.uid,
     username: user.username,
     home: user.homedir,
-    files,
+    files: { sshDir: path.join(user.homedir, '.ssh'), uid: user.uid },
     hestiaPort: PORT,
     commandName: COMMAND_NAME,
     scheme: appLinkScheme(process.env),
@@ -294,22 +309,21 @@ async function sshAuthorizeCommand(args: string[]): Promise<void> {
     banner: (port) => readSshdBanner(port),
     tailscaleStatus,
     localAddresses: () => localAddresses(),
-    issuePairingCode: async () => {
-      token = (await readFile(LOCAL_TOOL_TOKEN_PATH, 'utf8').catch(() => '')).trim() || null;
-      if (!token) return null;
-      const res = await fetch(`${API_ORIGIN}/api/auth/pairing-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Hestia-Token': token, 'Accept-Language': currentLocale() },
-      }).catch(() => null);
-      if (!res?.ok) return null;
-      return ((await res.json()) as { code?: string }).code ?? null;
-    },
+    issuePairingCode,
     onInterrupt: (cleanup) => {
       const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
       for (const signal of signals) process.on(signal, cleanup);
       return () => { for (const signal of signals) process.off(signal, cleanup); };
     },
-  });
+  };
+}
+
+async function sshAuthorizeCommand(args: string[]): Promise<void> {
+  let token: string | null = null;
+  const outcome = await sshAuthorize(args, sshDeps(async () => {
+    token = await optionalToolToken();
+    return (await tryApi<{ code?: string }>(token, '/auth/pairing-code'))?.code ?? null;
+  }));
   // Then like `hestia pair`: who used the code, and the chance to take it back.
   if (outcome.pairingCode && token && process.stdout.isTTY) {
     console.log('');
@@ -318,11 +332,47 @@ async function sshAuthorizeCommand(args: string[]): Promise<void> {
   process.exit(outcome.exitCode);
 }
 
+// Asks once, with a time limit; '' on Enter, Ctrl-D or when time is up.
+async function askWithin(question: string, timeoutMs: number): Promise<string> {
+  if (!process.stdin.isTTY) return '';
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const timer = setTimeout(() => rl.close(), timeoutMs);
+  try {
+    return await rl.question(question);
+  } catch {
+    return '';
+  } finally {
+    clearTimeout(timer);
+    rl.close();
+  }
+}
+
+async function connectCommand(args: string[]): Promise<void> {
+  const token = await optionalToolToken();
+  const code = await connect(args, {
+    ...sshDeps(async () => (await tryApi<{ code?: string }>(token, '/auth/pairing-code'))?.code ?? null),
+    envUrl: process.env.HESTIA_PUBLIC_URL,
+    envLinkKind: process.env.HESTIA_PAIR_LINK,
+    frontendOrigin: frontendOrigin(process.env.CORS_ALLOWED_ORIGINS, DEFAULT_FRONTEND_ORIGIN),
+    hostName: os.hostname().split('.')[0] || os.hostname(),
+    newPairingCode: () => tryApi<{ code: string; expiresInMs: number }>(token, '/auth/pairing-code'),
+    pairingStatus: (each) => tryApi<PairingCodeStatus>(token, '/auth/pairing-code/status', { code: each }),
+    cancelPairingCode: async (each) => { await tryApi(token, '/auth/pairing-code/cancel', { code: each }); },
+    revokePairing: async (each) => (await tryApi<{ revoked: boolean }>(token, '/auth/pairing-code/revoke', { code: each }))?.revoked ?? false,
+    status: (line) => process.stdout.write(line ? `\r\x1b[2K  ${dim(line)}` : '\r\x1b[2K'),
+    ask: askWithin,
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    columns: process.stdout.isTTY ? process.stdout.columns : undefined,
+  });
+  process.exit(code);
+}
+
 const [command, ...rest] = process.argv.slice(2);
 if (command === '--help' || command === '-h' || command === 'help') console.log(USAGE);
 else if (command === 'open') await open(rest);
 else if (command === 'pair') await pair(rest);
 else if (command === 'ssh-authorize') await sshAuthorizeCommand(rest);
+else if (command === 'connect') await connectCommand(rest);
 else if (command === 'delegate') {
   const token = await localToolToken();
   await delegateCommand(rest, {
